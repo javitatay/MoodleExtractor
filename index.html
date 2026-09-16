@@ -2468,9 +2468,14 @@ ${body}
    *   que el profesor haya decidido incluir igualmente (van a una carpeta aparte)
    * @returns {Uint8Array} el ZIP final, listo para descargar
    */
-  function buildExportZip(course, fileMap, selection, options, onProgress, unlistedFiles) {
+  async function buildExportZip(course, fileMap, selection, options, onProgress, unlistedFiles) {
     const opts = Object.assign({ textFormat: "pdf", includeOriginalFiles: true, includeIndex: true, singleCoursePdf: false }, options || {});
     const report = (n, total) => { if (onProgress) onProgress({ stage: "empaquetando", n, total }); };
+    // Cede el hilo cada pocas actividades para que la pestaña no se congele
+    // del todo en cursos grandes (varios cientos de actividades = varios
+    // segundos de trabajo síncrono generando PDFs) — ver test/run_stress_profile.js.
+    const YIELD_EVERY = 8;
+    const maybeYield = (n) => (n % YIELD_EVERY === 0) ? new Promise(r => setTimeout(r, 0)) : null;
 
     const rootName = (course.name || "Curso").replace(/[\\/:*?"<>|]/g, "-").trim() || "Curso";
     const zipEntries = [];
@@ -2492,10 +2497,11 @@ ${body}
       }
     }
 
-    course.sections.forEach((sec, secIdx) => {
-      if (selection.sections && selection.sections[sec.sectionid] === false) return;
+    for (let secIdx = 0; secIdx < course.sections.length; secIdx++) {
+      const sec = course.sections[secIdx];
+      if (selection.sections && selection.sections[sec.sectionid] === false) continue;
       const includedActs = sec.activities.filter(a => !(selection.activities && selection.activities[a.moduleid] === false));
-      if (includedActs.length === 0) return;
+      if (includedActs.length === 0) continue;
 
       const sectionFolder = slugFolder(sec.title, secIdx);
       indexLines.push(`## ${sec.title}`, "");
@@ -2504,7 +2510,8 @@ ${body}
 
       const sectionManifest = { title: sec.title, summary: sectionSummaryText, activities: [] };
 
-      includedActs.forEach((act, actIdx) => {
+      for (let actIdx = 0; actIdx < includedActs.length; actIdx++) {
+        const act = includedActs[actIdx];
         const actFolder = `${sectionFolder}/${slugFolder(act.title, actIdx)}`;
         const indexEntryPrefix = `- **[${act.typeLabel}]** ${act.title}`;
         const actManifest = { title: act.title, typeLabel: act.typeLabel, externalUrl: null, textFileRelPath: null, originalFileRelPaths: [] };
@@ -2548,10 +2555,11 @@ ${body}
         sectionManifest.activities.push(actManifest);
         doneActs++;
         report(doneActs, totalActs);
-      });
+        await maybeYield(doneActs);
+      }
       indexLines.push("");
       sectionManifests.push(sectionManifest);
-    });
+    }
 
     const unlistedManifest = [];
     if (unlistedFiles && unlistedFiles.length) {
@@ -2674,6 +2682,10 @@ ${body}
     includeUnlisted: false,
     exportOpts: { textFormat: "pdf", includeOriginalFiles: true, includeIndex: true, singleCoursePdf: false },
   };
+  // Se incrementa en cada carga/reinicio; una carga en curso comprueba que
+  // sigue siendo la más reciente antes de tocar el estado, para que cambiar
+  // de archivo (o cancelar) a media carga no deje una versión vieja "ganando".
+  let loadGeneration = 0;
 
   // ---------- Web Worker (creado a partir de un <script> embebido, sin archivo aparte) ----------
   let worker = null;
@@ -2708,21 +2720,30 @@ ${body}
   }
 
   async function handleFile(file) {
+    const myGen = ++loadGeneration;
+    const stale = () => myGen !== loadGeneration;
+
     setPhase("loading");
     setProgress("leyendo");
     try {
       const buf = await file.arrayBuffer();
+      if (stale()) return; // el profesor canceló o soltó otro archivo mientras tanto
       const bytes = new Uint8Array(buf);
       const fileMap = await unpackInWorker(bytes);
+      if (stale()) return;
       setProgress("interpretando-xml", { total: fileMap.size });
       await new Promise(r => setTimeout(r, 0));
+      if (stale()) return;
       const result = MBZParser.interpretFileMap(fileMap);
+      precomputeDisplayText(result.course);
+      if (stale()) return;
       state.parsed = result;
       state.selection = { sections: {}, activities: {} };
       state.includeUnlisted = false;
       setPhase("loaded");
       render();
     } catch (e) {
+      if (stale()) return;
       console.error(e);
       state.error = e.message || String(e);
       setPhase("error");
@@ -2752,17 +2773,46 @@ ${body}
   function isSectionIncluded(sec) { return state.selection.sections[sec.sectionid] !== false; }
   function isActivityIncluded(act) { return state.selection.activities[act.moduleid] !== false; }
 
-  function setSectionIncluded(sec, included) {
+  function setSectionIncluded(sec, included, sectionEl) {
     state.selection.sections[sec.sectionid] = included;
     for (const act of sec.activities) state.selection.activities[act.moduleid] = included;
-    render();
+
+    // Solo tocamos las actividades DE ESTA sección (unas pocas), nunca el
+    // resto del curso — con cientos de actividades, reconstruir el árbol
+    // entero por un solo clic se notaba (ver test/run_stress_profile.js).
+    const rows = sectionEl.querySelectorAll(".activity");
+    rows.forEach((rowEl, i) => {
+      rowEl.classList.toggle("activity-excluded", !included);
+      const cb = rowEl.querySelector(".activity-head input[type=checkbox]");
+      if (cb) cb.checked = included;
+    });
+    patchSectionChrome(sec, sectionEl);
+    patchExportBar();
   }
-  function setActivityIncluded(sec, act, included) {
+  function setActivityIncluded(sec, act, included, rowEl, sectionEl) {
     state.selection.activities[act.moduleid] = included;
     const allOut = sec.activities.every(a => !isActivityIncluded(a));
     if (allOut) state.selection.sections[sec.sectionid] = false;
     else delete state.selection.sections[sec.sectionid];
-    render();
+
+    rowEl.classList.toggle("activity-excluded", !included);
+    patchSectionChrome(sec, sectionEl);
+    patchExportBar();
+  }
+  function patchSectionChrome(sec, sectionEl) {
+    const included = isSectionIncluded(sec);
+    const anyIncluded = sec.activities.some(a => isActivityIncluded(a));
+    sectionEl.classList.toggle("section-excluded", !included && !anyIncluded);
+    sectionEl.classList.toggle("section-partial", !included && anyIncluded);
+    const cb = sectionEl.querySelector(".section-header input[type=checkbox]");
+    if (cb) cb.checked = included;
+  }
+  function patchExportBar() {
+    const btn = $(".btn-export");
+    if (!btn) return;
+    const span = btn.querySelector(".tabular");
+    if (span) span.textContent = `${countSelected()}/${totalActivities()}`;
+    btn.disabled = countSelected() === 0;
   }
 
   function countSelected() {
@@ -2778,19 +2828,8 @@ ${body}
 
   const app = document.getElementById("app");
 
-  // Conserva el foco al re-renderizar (checkbox recién marcado, etc.) usando
-  // un identificador estable en vez de depender de que el nodo DOM sobreviva.
-  function withFocusPreserved(renderFn) {
-    const active = document.activeElement;
-    const focusKey = active && active.dataset ? active.dataset.focusKey : null;
-    renderFn();
-    if (focusKey) {
-      const restored = app.querySelector(`[data-focus-key="${CSS.escape(focusKey)}"]`);
-      if (restored) restored.focus({ preventScroll: true });
-    }
-  }
-
   function resetToEmpty() {
+    loadGeneration++; // invalida cualquier carga en curso (handleFile comprobará stale() y abortará)
     state = { phase: "empty", error: null, parsed: null, selection: { sections: {}, activities: {} }, includeUnlisted: false, exportOpts: state.exportOpts };
     render();
   }
@@ -2810,14 +2849,23 @@ ${body}
     const host = document.getElementById("header-file-status");
     if (!host) return;
     host.innerHTML = "";
-    if (state.phase !== "loaded" || !state.parsed) return;
-    host.appendChild(el("div", { class: "file-status-chip" }, [
-      el("span", { class: "name" }, ["Curso: ", el("strong", {}, [truncate(state.parsed.course.name, 34)])]),
-      el("button", { class: "reset-btn", title: "Cargar otro archivo .mbz", onclick: resetToEmpty }, [
-        el("span", { class: "ic", "aria-hidden": "true" }, ["✕"]),
-        el("span", { class: "label" }, ["Nuevo archivo"]),
-      ]),
-    ]));
+    if (state.phase === "loaded" && state.parsed) {
+      host.appendChild(el("div", { class: "file-status-chip" }, [
+        el("span", { class: "name" }, ["Curso: ", el("strong", {}, [truncate(state.parsed.course.name, 34)])]),
+        el("button", { class: "reset-btn", title: "Cargar otro archivo .mbz", onclick: resetToEmpty }, [
+          el("span", { class: "ic", "aria-hidden": "true" }, ["✕"]),
+          el("span", { class: "label" }, ["Nuevo archivo"]),
+        ]),
+      ]));
+    } else if (state.phase === "loading") {
+      host.appendChild(el("div", { class: "file-status-chip" }, [
+        el("span", { class: "name" }, ["Procesando…"]),
+        el("button", { class: "reset-btn", title: "Cancelar la carga", onclick: resetToEmpty }, [
+          el("span", { class: "ic", "aria-hidden": "true" }, ["✕"]),
+          el("span", { class: "label" }, ["Cancelar"]),
+        ]),
+      ]));
+    }
   }
 
   function renderEmpty() {
@@ -2965,26 +3013,35 @@ ${body}
       el("label", { class: "checkbox-row" }, [
         el("input", {
           type: "checkbox", checked: included ? "checked" : null,
-          "data-focus-key": `sec-${sec.sectionid}`,
-          onchange: (e) => withFocusPreserved(() => setSectionIncluded(sec, e.target.checked)),
+          onchange: (e) => setSectionIncluded(sec, e.target.checked, box),
         }),
         el("span", { class: "section-index", "aria-hidden": "true" }, [ordinal(index)]),
         el("h3", { class: "section-title" }, [sec.title]),
       ]),
       el("span", { class: "section-count tabular" }, [`${sec.activities.length}`]),
     ]));
-    if (sec.summary) {
-      const s = MBZHtml.htmlToText(sec.summary);
-      if (s) box.appendChild(el("p", { class: "section-summary" }, [truncate(s, 220)]));
+    if (sec._summaryText) {
+      box.appendChild(el("p", { class: "section-summary" }, [truncate(sec._summaryText, 220)]));
     }
 
     const list = el("div", { class: "activity-list" });
-    sec.activities.forEach(act => list.appendChild(renderActivity(sec, act)));
+    sec.activities.forEach(act => list.appendChild(renderActivity(sec, act, box)));
     box.appendChild(list);
     return box;
   }
 
-  function activityPreviewText(act) {
+  // Convierte HTML a texto una única vez por actividad/sección justo tras el
+  // parseo, en vez de en cada render: con cursos grandes (cientos de
+  // actividades), recalcularlo en cada clic de checkbox era el 60%+ del coste
+  // de repintar — ver test/run_stress_profile.js.
+  function precomputeDisplayText(course) {
+    for (const sec of course.sections) {
+      sec._summaryText = sec.summary ? MBZHtml.htmlToText(sec.summary) : "";
+      for (const act of sec.activities) act._previewText = computePreviewText(act);
+    }
+  }
+
+  function computePreviewText(act) {
     if (act.modulename === "url" && act.externalUrl) return act.externalUrl;
     if (act.modulename === "quiz") {
       const n = act.quiz && act.quiz.questions ? act.quiz.questions.length : 0;
@@ -3006,6 +3063,7 @@ ${body}
     if (act.chapters && act.chapters.length) return act.chapters.map(c => c.title).join(" · ");
     return "";
   }
+  function activityPreviewText(act) { return act._previewText || ""; }
   function activityFullText(act) {
     const parts = [];
     const intro = MBZHtml.htmlToText(act.intro);
@@ -3021,7 +3079,7 @@ ${body}
     return parts.join("\n\n");
   }
 
-  function renderActivity(sec, act) {
+  function renderActivity(sec, act, sectionEl) {
     const included = isActivityIncluded(act);
     const row = el("div", { class: "activity" + (included ? "" : " activity-excluded") });
     const previewId = `preview-${act.moduleid}`;
@@ -3030,8 +3088,7 @@ ${body}
       el("label", { class: "checkbox-row", style: "flex:1 1 auto; min-width:0;" }, [
         el("input", {
           type: "checkbox", checked: included ? "checked" : null,
-          "data-focus-key": `act-${act.moduleid}`,
-          onchange: (e) => withFocusPreserved(() => setActivityIncluded(sec, act, e.target.checked)),
+          onchange: (e) => setActivityIncluded(sec, act, e.target.checked, row, sectionEl),
         }),
         el("span", { "aria-hidden": "true" }, [act.icon]),
         el("span", { class: "activity-title" }, [act.title]),
@@ -3096,23 +3153,25 @@ ${body}
   async function onExportClick() {
     const btn = $(".btn-export");
     const originalHtml = btn.innerHTML;
+    const mySession = state.parsed; // si cambias de curso a media exportación, la descarga vieja no debe dispararse
     btn.disabled = true;
     btn.textContent = "Generando…";
     try {
       await new Promise(r => setTimeout(r, 0));
       const extraUnlisted = state.includeUnlisted ? state.parsed.unlistedFiles : [];
-      const zipBytes = MBZExporter.buildExportZip(
+      const zipBytes = await MBZExporter.buildExportZip(
         state.parsed.course,
         state.parsed.fileMap,
         state.selection,
         state.exportOpts,
-        null,
+        (info) => { if (info.n && info.total) btn.textContent = `Generando… (${info.n}/${info.total})`; },
         extraUnlisted
       );
+      if (state.parsed !== mySession) return; // curso ya no vigente: descartamos en silencio
       const blob = new Blob([zipBytes], { type: "application/zip" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      const safeName = (state.parsed.course.name || "curso").replace(/[\\/:*?"<>|]/g, "-").trim() || "curso";
+      const safeName = (mySession.course.name || "curso").replace(/[\\/:*?"<>|]/g, "-").trim() || "curso";
       a.href = url;
       a.download = `${safeName}.zip`;
       document.body.appendChild(a);
@@ -3120,11 +3179,14 @@ ${body}
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 4000);
     } catch (e) {
+      if (state.parsed !== mySession) return;
       console.error(e);
       alert("No se ha podido generar la descarga: " + e.message);
     } finally {
-      btn.disabled = false;
-      btn.innerHTML = originalHtml;
+      if (state.parsed === mySession) {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+      }
     }
   }
 

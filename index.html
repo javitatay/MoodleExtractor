@@ -1,0 +1,3083 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>MoodleExtractor — Explora y extrae el contenido de un backup .mbz</title>
+<meta name="description" content="Sube un archivo .mbz (copia de seguridad de un curso de Moodle) y explora, previsualiza y descarga su contenido -PDF, archivos originales o enlaces- sin instalar nada ni subir el archivo a ningún servidor.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="MoodleExtractor — Explora copias de seguridad de Moodle (.mbz)">
+<meta property="og:description" content="Convierte un backup .mbz de Moodle en una carpeta organizada y legible: PDF, archivos y enlaces. Todo en el navegador, sin servidor.">
+<meta property="og:url" content="https://javitatay.github.io/MoodleExtractor/">
+<meta name="theme-color" content="#0b0d10">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230b0d10'/%3E%3Ctext x='16' y='23' font-size='18' text-anchor='middle'%3E%F0%9F%8E%92%3C/text%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #0b0d10;
+  --bg-elevated: #14171b;
+  --fg: #f2f2f0;
+  --mid: #8b8f94;
+  --faint: #55585c;
+  --accent: #ffb648;
+  --accent-fg: #1a1300;
+  --ink: #6ee7c8;
+  --danger: #ff6b6b;
+  --border: hsl(210, 8%, 20%);
+  --border-subtle: rgba(255,255,255,0.07);
+  --radius: 10px;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  color-scheme: dark;
+}
+body.light {
+  --bg: #f3f2ee;
+  --bg-elevated: #ffffff;
+  --fg: #16181a;
+  --mid: #6b6f73;
+  --faint: #9a9d9f;
+  --accent: #935b07;
+  --accent-fg: #ffffff;
+  --ink: #0f8f68;
+  --border: #dcdcd6;
+  --border-subtle: rgba(0,0,0,0.07);
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+a { color: var(--accent); }
+.tabular { font-variant-numeric: tabular-nums; }
+
+.skip-link {
+  position: absolute; left: 12px; top: -48px; z-index: 100;
+  background: var(--accent); color: var(--accent-fg); padding: 10px 16px;
+  border-radius: 8px; font-size: 0.85rem; font-weight: 700; text-decoration: none;
+  transition: top 150ms var(--ease-out);
+}
+.skip-link:focus { top: 12px; }
+
+/* ---------- Cabecera ---------- */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 24px; border-bottom: 1px solid var(--border-subtle);
+  max-width: 760px; margin: 0 auto;
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-logo { font-size: 1.4rem; }
+.brand h1 {
+  font-size: 1.05rem; margin: 0; font-weight: 800; letter-spacing: -0.01em;
+}
+.brand .tagline { color: var(--mid); font-size: 0.82rem; margin-top: 1px; }
+.icon-btn {
+  background: none; border: 1px solid var(--border); color: var(--mid);
+  border-radius: 8px; width: 36px; height: 36px; cursor: pointer; font-size: 1rem;
+  transition: border-color 150ms var(--ease-out), color 150ms var(--ease-out), transform 100ms var(--ease-out);
+  touch-action: manipulation;
+}
+@media (hover: hover) and (pointer: fine) {
+  .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+}
+.icon-btn:active { transform: scale(0.93); }
+
+main { max-width: 760px; margin: 0 auto; padding: 28px 24px 80px; }
+
+/* ---------- Estado vacío / dropzone ---------- */
+.empty-wrap { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 48px 16px; }
+
+.dropzone {
+  position: relative;
+  width: 100%; max-width: 480px; border: 2px dashed var(--border); border-radius: 4px;
+  padding: 52px 24px 40px; text-align: center; cursor: pointer;
+  background: var(--bg-elevated); color: inherit; font: inherit;
+  transition: border-color 150ms var(--ease-out), background 150ms var(--ease-out);
+  touch-action: manipulation;
+}
+/* Dos tiras de "cinta" en las esquinas — la mochila llega precintada */
+.dropzone::before, .dropzone::after {
+  content: ""; position: absolute; top: -10px; width: 64px; height: 22px;
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.dropzone::before { left: 24px; transform: rotate(-8deg); }
+.dropzone::after { right: 24px; transform: rotate(7deg); }
+@media (hover: hover) and (pointer: fine) {
+  .dropzone:hover { border-color: var(--accent); }
+}
+.dropzone:focus-visible { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: 3px; }
+.dropzone.drag-over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--bg-elevated)); }
+.drop-icon { font-size: 2.2rem; margin-bottom: 10px; }
+.drop-title { font-size: 1.05rem; font-weight: 700; margin: 0 0 4px; }
+.drop-sub { color: var(--mid); margin: 0; font-size: 0.87rem; }
+.privacy-note { color: var(--mid); font-size: 0.82rem; text-align: center; max-width: 420px; }
+.privacy-note .lock { margin-right: 4px; }
+
+.how-it-works { max-width: 560px; margin: 8px auto 0; color: var(--mid); font-size: 0.88rem; }
+.how-it-works h2 { color: var(--fg); font-size: 0.92rem; margin-bottom: 8px; font-weight: 700; }
+.how-it-works ol { padding-left: 20px; margin: 0; }
+.how-it-works li { margin-bottom: 5px; }
+.how-it-works code { font-family: var(--font-mono); background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; font-size: 0.85em; }
+
+/* ---------- Carga / error ---------- */
+.loading-wrap, .error-wrap { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 90px 16px; text-align: center; }
+.spinner {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 3px solid var(--border); border-top-color: var(--accent);
+  animation: spin 0.7s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 1.6s; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+.progress-label { color: var(--mid); font-family: var(--font-mono); font-size: 0.85rem; }
+.error-icon { font-size: 2rem; }
+.error-title { font-weight: 700; font-size: 1.02rem; margin: 0; }
+.error-detail { color: var(--mid); max-width: 460px; }
+
+/* ---------- Botones ---------- */
+.btn {
+  border-radius: 7px; padding: 9px 16px; font-size: 0.87rem; font-weight: 700;
+  cursor: pointer; border: 1px solid transparent; font-family: inherit;
+  transition: transform 100ms var(--ease-out), filter 150ms var(--ease-out), border-color 150ms var(--ease-out), color 150ms var(--ease-out);
+  touch-action: manipulation;
+}
+.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn-primary { background: var(--accent); color: var(--accent-fg); }
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover:not(:disabled) { filter: brightness(1.08); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+}
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-ghost { background: none; border-color: var(--border); color: var(--fg); }
+.btn-link { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 0.84rem; padding: 3px 0; font-family: inherit; touch-action: manipulation; }
+@media (hover: hover) and (pointer: fine) {
+  .btn-link:hover { text-decoration: underline; }
+}
+button, input, [tabindex] { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, input:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+/* ---------- Aparición del curso cargado (un único momento orquestado) ---------- */
+.loaded-wrap { animation: rise 320ms var(--ease-out) both; }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .loaded-wrap { animation: fade 200ms ease both; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+.course-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+.course-title { margin: 0 0 6px; font-size: 1.25rem; text-wrap: balance; }
+.manifest-stats { display: flex; gap: 8px; flex-wrap: wrap; margin: 0; padding: 0; list-style: none; }
+.manifest-stats li {
+  font-family: var(--font-mono); font-size: 0.72rem; color: var(--mid);
+  border: 1px solid var(--border); border-radius: 4px; padding: 3px 8px;
+  text-transform: uppercase; letter-spacing: 0.03em;
+}
+
+.warnings { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 16px; font-size: 0.85rem; color: var(--mid); }
+.warnings summary { cursor: pointer; color: var(--fg); touch-action: manipulation; }
+.warnings ul { margin: 8px 0 0; padding-left: 20px; }
+
+/* ---------- Barra de exportación ---------- */
+.export-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px 18px; margin-bottom: 22px; position: sticky; top: 8px; z-index: 5;
+}
+.export-left { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.field-group { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
+.field-label { color: var(--mid); }
+.radio, .checkbox { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; cursor: pointer; white-space: nowrap; touch-action: manipulation; }
+.select-actions { display: flex; gap: 12px; }
+.btn-export { white-space: nowrap; }
+
+/* ---------- Inventario: secciones/actividades ---------- */
+.tree { display: flex; flex-direction: column; gap: 4px; }
+.section {
+  border-top: 1px dashed var(--border); padding-top: 14px; margin-top: 14px;
+  scroll-margin-top: 90px;
+}
+.tree > .section:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+.section-excluded { opacity: 0.45; }
+
+.section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.section-index { font-family: var(--font-mono); color: var(--mid); font-size: 0.85rem; min-width: 1.6em; }
+.section-title { margin: 0; font-size: 1rem; flex: 1; min-width: 0; text-wrap: balance; }
+.section-count { color: var(--mid); font-size: 0.72rem; font-family: var(--font-mono); }
+.section-summary { color: var(--mid); font-size: 0.85rem; margin: 2px 0 10px 30px; }
+
+.checkbox-row { display: flex; align-items: center; gap: 10px; cursor: pointer; touch-action: manipulation; }
+.checkbox-row input { flex-shrink: 0; }
+
+.activity-list { display: flex; flex-direction: column; margin-left: 30px; }
+.activity { padding: 9px 8px; border-radius: 7px; margin-left: -8px; scroll-margin-top: 90px; }
+@media (hover: hover) and (pointer: fine) {
+  .activity:hover { background: var(--border-subtle); }
+}
+.activity-excluded { opacity: 0.4; }
+.activity-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.activity-title { font-weight: 600; flex: 1 1 160px; min-width: 0; overflow-wrap: anywhere; }
+
+/* Sello de tipo: el único elemento "atrevido" del diseño — todo lo demás calmado */
+.stamp {
+  font-family: var(--font-mono); font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--mid); border: 1.5px solid var(--faint); border-radius: 3px;
+  padding: 2px 7px; transform: rotate(-2deg); white-space: nowrap;
+}
+
+.btn-preview { margin-left: auto; flex-shrink: 0; }
+.activity-preview { color: var(--mid); font-size: 0.85rem; margin: 6px 0 0 30px; overflow-wrap: anywhere; }
+.activity-unsupported { color: var(--accent); font-size: 0.78rem; margin: 6px 0 0 30px; }
+
+/* Panel "Ver contenido": revelado con grid-template-rows para animar alto variable sin saltos */
+.full-text-wrap {
+  display: grid; grid-template-rows: 0fr; margin: 0 0 0 30px;
+  transition: grid-template-rows 200ms var(--ease-out);
+}
+.full-text-wrap.open { grid-template-rows: 1fr; }
+.full-text-inner { overflow: hidden; }
+.full-text {
+  white-space: pre-wrap; font-family: var(--font-mono); font-size: 0.82rem;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px; margin: 8px 0 0; max-height: 340px; overflow: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .full-text-wrap { transition: none; }
+}
+
+.file-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0 30px; }
+.chip {
+  font-family: var(--font-mono); font-size: 0.72rem; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 999px; padding: 3px 10px; color: var(--mid);
+}
+.chip-missing { border-color: var(--danger); color: var(--danger); }
+
+.unlisted { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; margin-top: 18px; font-size: 0.85rem; }
+.unlisted summary { cursor: pointer; touch-action: manipulation; }
+.unlisted-list { color: var(--mid); max-height: 160px; overflow: auto; margin: 8px 0 0; padding-left: 20px; content-visibility: auto; }
+
+footer.site-footer { text-align: center; color: var(--mid); font-size: 0.78rem; padding: 24px 20px; }
+footer.site-footer a { color: var(--mid); }
+@media (hover: hover) and (pointer: fine) {
+  footer.site-footer a:hover { color: var(--accent); }
+}
+.footer-line { margin: 0 0 6px; }
+.footer-line:last-child { margin-bottom: 0; }
+
+@media (max-width: 640px) {
+  .topbar, main { padding-left: 14px; padding-right: 14px; }
+  .export-bar { position: static; flex-direction: column; align-items: stretch; }
+  .export-right { display: flex; }
+  .btn-export { width: 100%; }
+  .activity-list, .section-summary, .activity-preview, .file-chips, .full-text-wrap { margin-left: 18px; }
+}
+
+</style>
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Saltar al contenido</a>
+  <div class="topbar">
+    <div class="brand">
+      <span class="brand-logo" aria-hidden="true">🎒</span>
+      <div>
+        <h1>MoodleExtractor</h1>
+        <div class="tagline">Explora copias de seguridad de Moodle (.mbz)</div>
+      </div>
+    </div>
+    <button class="icon-btn" id="theme-toggle" title="Cambiar tema claro/oscuro" aria-label="Cambiar tema claro/oscuro">◐</button>
+  </div>
+
+  <main id="main-content">
+    <div id="app"></div>
+    <div class="how-it-works" id="how-it-works">
+      <h2>¿Para qué sirve esto?</h2>
+      <ol>
+        <li>Sube el archivo <code>.mbz</code> que te haya pasado el profesor anterior (o el que exportes tú desde "Copia de seguridad" en Moodle).</li>
+        <li>Explora el curso completo por secciones y actividades: páginas, etiquetas, archivos, enlaces, carpetas, libros…</li>
+        <li>Marca lo que te interese y descárgalo en una carpeta ordenada, con el texto convertido a PDF y los archivos originales incluidos.</li>
+      </ol>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p class="footer-line">Javier Tatay Rubio · <a href="mailto:j.tatayrubio@edu.gva.es">j.tatayrubio@edu.gva.es</a> · <a href="mailto:javitatay@gmail.com">javitatay@gmail.com</a></p>
+    <p class="footer-line"><a href="https://github.com/javitatay" target="_blank" rel="noopener">github.com/javitatay</a> · <a href="https://github.com/javitatay/MoodleExtractor" target="_blank" rel="noopener">código de esta herramienta</a></p>
+  </footer>
+
+  <script type="text/plain" id="mbz-worker-source">
+/*!
+ * inflate.js — Descompresor DEFLATE (RFC 1951) y envoltorio GZIP (RFC 1952)
+ * escrito desde cero, sin dependencias externas, para MoodleExtractor.
+ * Basado en el algoritmo estándar de Huffman canónico + LZ77 descrito en RFC1951.
+ */
+(function (global) {
+  "use strict";
+
+  // ---- Tablas fijas de RFC1951 ----
+  const LENGTH_BASE = [3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,67,83,99,115,131,163,195,227,258];
+  const LENGTH_EXTRA = [0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0];
+  const DIST_BASE = [1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577];
+  const DIST_EXTRA = [0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13];
+  const CLC_ORDER = [16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15];
+
+  class BitReader {
+    constructor(bytes) {
+      this.bytes = bytes;
+      this.pos = 0;      // byte position
+      this.bitBuf = 0;   // bit accumulator
+      this.bitCnt = 0;   // number of valid bits in bitBuf
+    }
+    // Lee n bits (0-24 de golpe es seguro), LSB-first como exige DEFLATE
+    readBits(n) {
+      while (this.bitCnt < n) {
+        if (this.pos >= this.bytes.length) throw new Error("inflate: fin de datos inesperado");
+        this.bitBuf |= this.bytes[this.pos++] << this.bitCnt;
+        this.bitCnt += 8;
+      }
+      const val = this.bitBuf & ((1 << n) - 1);
+      this.bitBuf >>>= n;
+      this.bitCnt -= n;
+      return val;
+    }
+    alignToByte() {
+      this.bitBuf = 0;
+      this.bitCnt = 0;
+    }
+  }
+
+  // Construye una tabla de decodificación de Huffman canónica a partir de
+  // una lista de longitudes de código (índice = símbolo, valor = longitud en bits).
+  // Devuelve { table: Uint16Array(hasta 2^maxBits), maxBits } donde cada entrada
+  // codifica (símbolo << 5) | longitud, indexada por los bits leídos LSB-first invertidos.
+  function buildHuffman(lengths) {
+    const maxBits = Math.max(0, ...lengths);
+    if (maxBits === 0) return { table: new Uint32Array(1), maxBits: 0 };
+    const blCount = new Array(maxBits + 1).fill(0);
+    for (const l of lengths) if (l > 0) blCount[l]++;
+    const nextCode = new Array(maxBits + 1).fill(0);
+    let code = 0;
+    for (let bits = 1; bits <= maxBits; bits++) {
+      code = (code + blCount[bits - 1]) << 1;
+      nextCode[bits] = code;
+    }
+    const size = 1 << maxBits;
+    const table = new Uint32Array(size);
+    for (let sym = 0; sym < lengths.length; sym++) {
+      const len = lengths[sym];
+      if (len === 0) continue;
+      let c = nextCode[len]++;
+      // Los códigos Huffman de DEFLATE se leen MSB-first, pero el stream de bits
+      // es LSB-first, así que invertimos los bits de "c" a "len" bits para poder
+      // indexar la tabla directamente con lo leído del BitReader.
+      let rev = 0;
+      for (let i = 0; i < len; i++) {
+        rev = (rev << 1) | ((c >>> i) & 1);
+      }
+      // Rellenamos todas las entradas cuyo sufijo de maxBits-len bits coincide,
+      // porque el lector no sabe de antemano cuántos bits tiene el código.
+      const step = 1 << len;
+      for (let fill = rev; fill < size; fill += step) {
+        table[fill] = (sym << 5) | len;
+      }
+    }
+    return { table, maxBits };
+  }
+
+  function decodeSymbol(br, huff) {
+    if (huff.maxBits === 0) throw new Error("inflate: tabla Huffman vacía");
+    // Miramos maxBits bits sin consumir para indexar la tabla precalculada.
+    while (br.bitCnt < huff.maxBits && br.pos < br.bytes.length) {
+      br.bitBuf |= br.bytes[br.pos++] << br.bitCnt;
+      br.bitCnt += 8;
+    }
+    const idx = br.bitBuf & ((1 << huff.maxBits) - 1);
+    const entry = huff.table[idx];
+    const len = entry & 31;
+    if (len === 0) throw new Error("inflate: código Huffman inválido");
+    br.bitBuf >>>= len;
+    br.bitCnt -= len;
+    return entry >>> 5;
+  }
+
+  function buildFixedHuffman() {
+    const litLengths = new Array(288);
+    for (let i = 0; i <= 143; i++) litLengths[i] = 8;
+    for (let i = 144; i <= 255; i++) litLengths[i] = 9;
+    for (let i = 256; i <= 279; i++) litLengths[i] = 7;
+    for (let i = 280; i <= 287; i++) litLengths[i] = 8;
+    const distLengths = new Array(30).fill(5);
+    return { lit: buildHuffman(litLengths), dist: buildHuffman(distLengths) };
+  }
+  let FIXED = null;
+
+  // Descomprime un bloque DEFLATE crudo (sin cabecera gzip/zlib) y devuelve Uint8Array.
+  function inflateRaw(input, expectedSize) {
+    const br = new BitReader(input);
+    // Buffer de salida dinámico
+    let out = new Uint8Array(expectedSize && expectedSize > 0 ? expectedSize : Math.max(1024, input.length * 3));
+    let outPos = 0;
+    function ensure(n) {
+      if (outPos + n > out.length) {
+        let newLen = out.length * 2;
+        while (newLen < outPos + n) newLen *= 2;
+        const bigger = new Uint8Array(newLen);
+        bigger.set(out.subarray(0, outPos));
+        out = bigger;
+      }
+    }
+
+    let final = 0;
+    do {
+      final = br.readBits(1);
+      const type = br.readBits(2);
+      if (type === 0) {
+        // Bloque sin comprimir
+        br.alignToByte();
+        if (br.pos + 4 > br.bytes.length) throw new Error("inflate: cabecera de bloque STORED truncada");
+        const len = br.bytes[br.pos] | (br.bytes[br.pos + 1] << 8);
+        br.pos += 4; // len + ~len
+        ensure(len);
+        out.set(br.bytes.subarray(br.pos, br.pos + len), outPos);
+        outPos += len;
+        br.pos += len;
+      } else if (type === 1 || type === 2) {
+        let litHuff, distHuff;
+        if (type === 1) {
+          if (!FIXED) FIXED = buildFixedHuffman();
+          litHuff = FIXED.lit;
+          distHuff = FIXED.dist;
+        } else {
+          const hlit = br.readBits(5) + 257;
+          const hdist = br.readBits(5) + 1;
+          const hclen = br.readBits(4) + 4;
+          const clLengths = new Array(19).fill(0);
+          for (let i = 0; i < hclen; i++) clLengths[CLC_ORDER[i]] = br.readBits(3);
+          const clHuff = buildHuffman(clLengths);
+          const allLengths = new Array(hlit + hdist).fill(0);
+          let i = 0;
+          while (i < hlit + hdist) {
+            const sym = decodeSymbol(br, clHuff);
+            if (sym < 16) {
+              allLengths[i++] = sym;
+            } else if (sym === 16) {
+              const rep = br.readBits(2) + 3;
+              const prev = i > 0 ? allLengths[i - 1] : 0;
+              for (let r = 0; r < rep && i < allLengths.length; r++) allLengths[i++] = prev;
+            } else if (sym === 17) {
+              const rep = br.readBits(3) + 3;
+              for (let r = 0; r < rep && i < allLengths.length; r++) allLengths[i++] = 0;
+            } else if (sym === 18) {
+              const rep = br.readBits(7) + 11;
+              for (let r = 0; r < rep && i < allLengths.length; r++) allLengths[i++] = 0;
+            } else {
+              throw new Error("inflate: símbolo de longitud de código inválido");
+            }
+          }
+          litHuff = buildHuffman(allLengths.slice(0, hlit));
+          distHuff = buildHuffman(allLengths.slice(hlit));
+        }
+        // Decodificación del cuerpo comprimido (literales / longitud+distancia)
+        for (;;) {
+          const sym = decodeSymbol(br, litHuff);
+          if (sym < 256) {
+            ensure(1);
+            out[outPos++] = sym;
+          } else if (sym === 256) {
+            break; // fin de bloque
+          } else {
+            const lenIdx = sym - 257;
+            if (lenIdx >= LENGTH_BASE.length) throw new Error("inflate: código de longitud fuera de rango");
+            const length = LENGTH_BASE[lenIdx] + br.readBits(LENGTH_EXTRA[lenIdx]);
+            const distSym = decodeSymbol(br, distHuff);
+            if (distSym >= DIST_BASE.length) throw new Error("inflate: código de distancia fuera de rango");
+            const dist = DIST_BASE[distSym] + br.readBits(DIST_EXTRA[distSym]);
+            ensure(length);
+            let src = outPos - dist;
+            if (src < 0) throw new Error("inflate: distancia LZ77 inválida");
+            for (let k = 0; k < length; k++) {
+              out[outPos] = out[src];
+              outPos++; src++;
+            }
+          }
+        }
+      } else {
+        throw new Error("inflate: tipo de bloque DEFLATE reservado/no soportado");
+      }
+    } while (final !== 1);
+
+    return out.subarray(0, outPos);
+  }
+
+  // CRC32 estándar (usado por gzip y por nuestro escritor de ZIP)
+  let CRC_TABLE = null;
+  function crc32(bytes, crc) {
+    if (!CRC_TABLE) {
+      CRC_TABLE = new Uint32Array(256);
+      for (let n = 0; n < 256; n++) {
+        let c = n;
+        for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        CRC_TABLE[n] = c >>> 0;
+      }
+    }
+    crc = (crc === undefined ? 0xFFFFFFFF : (crc ^ 0xFFFFFFFF)) >>> 0;
+    for (let i = 0; i < bytes.length; i++) {
+      crc = (CRC_TABLE[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8)) >>> 0;
+    }
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  // Descomprime un archivo .gz completo (cabecera GZIP + deflate + CRC32/ISIZE)
+  function gunzip(bytes) {
+    if (bytes.length < 18 || bytes[0] !== 0x1f || bytes[1] !== 0x8b) {
+      throw new Error("El archivo no tiene cabecera GZIP válida (¿seguro que es un .mbz?)");
+    }
+    const cm = bytes[2];
+    if (cm !== 8) throw new Error("Método de compresión GZIP no soportado (esperado deflate)");
+    const flg = bytes[3];
+    let pos = 10;
+    if (flg & 0x04) { // FEXTRA
+      const xlen = bytes[pos] | (bytes[pos + 1] << 8);
+      pos += 2 + xlen;
+    }
+    if (flg & 0x08) { // FNAME
+      while (bytes[pos] !== 0) pos++;
+      pos++;
+    }
+    if (flg & 0x10) { // FCOMMENT
+      while (bytes[pos] !== 0) pos++;
+      pos++;
+    }
+    if (flg & 0x02) { // FHCRC
+      pos += 2;
+    }
+    const isizeOffset = bytes.length - 4;
+    const isize = (bytes[isizeOffset] | (bytes[isizeOffset + 1] << 8) | (bytes[isizeOffset + 2] << 16) | (bytes[isizeOffset + 3] << 24)) >>> 0;
+    const deflateData = bytes.subarray(pos, bytes.length - 8);
+    const out = inflateRaw(deflateData, isize);
+    return out;
+  }
+
+  const api = { inflateRaw, gunzip, crc32 };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else global.MBZInflate = api;
+})(typeof window !== "undefined" ? window : globalThis);
+
+
+/*!
+ * tar.js — Lector de archivos TAR (formato ustar, con soporte de nombres largos
+ * GNU ('L') y cabeceras PAX ('x')) escrito desde cero para MoodleExtractor.
+ * Devuelve un array de { name, size, type, data (Uint8Array) }.
+ */
+(function (global) {
+  "use strict";
+
+  function readString(bytes, offset, length) {
+    let end = offset;
+    const stop = offset + length;
+    while (end < stop && bytes[end] !== 0) end++;
+    return new TextDecoder("utf-8").decode(bytes.subarray(offset, end));
+  }
+
+  function readOctal(bytes, offset, length) {
+    // Los tamaños pueden venir en octal ASCII clásico, o en formato binario
+    // GNU "base-256" cuando el valor no cabe en el campo (bit alto del primer byte a 1).
+    if (bytes[offset] & 0x80) {
+      let val = 0n;
+      for (let i = 1; i < length; i++) {
+        val = (val << 8n) | BigInt(bytes[offset + i]);
+      }
+      return Number(val);
+    }
+    const str = readString(bytes, offset, length).trim();
+    if (str === "") return 0;
+    return parseInt(str, 8) || 0;
+  }
+
+  function untar(bytes) {
+    const entries = [];
+    let pos = 0;
+    let longNameOverride = null; // de una entrada GNU 'L' previa
+    let paxOverrides = null; // objeto {path: "..."} de una cabecera PAX 'x' previa
+
+    while (pos + 512 <= bytes.length) {
+      // Un bloque de 512 ceros marca fin de archivo (normalmente van dos seguidos)
+      let allZero = true;
+      for (let i = 0; i < 512; i++) { if (bytes[pos + i] !== 0) { allZero = false; break; } }
+      if (allZero) break;
+
+      const header = bytes.subarray(pos, pos + 512);
+      let name = readString(header, 0, 100);
+      const size = readOctal(header, 124, 12);
+      const typeflag = String.fromCharCode(header[156] || 0);
+      const magic = readString(header, 257, 6);
+      let prefix = "";
+      if (magic === "ustar") {
+        prefix = readString(header, 345, 155);
+      }
+      if (prefix) name = prefix + "/" + name;
+
+      pos += 512;
+      const dataStart = pos;
+      const dataEnd = pos + size;
+      if (dataEnd > bytes.length) {
+        throw new Error("tar: entrada truncada (¿archivo .mbz incompleto o corrupto?)");
+      }
+      const data = bytes.subarray(dataStart, dataEnd);
+      // Avanza al siguiente múltiplo de 512
+      pos += size;
+      const pad = (512 - (size % 512)) % 512;
+      pos += pad;
+
+      if (typeflag === "L") {
+        // GNU long name: el contenido de esta entrada es el nombre real de la siguiente
+        longNameOverride = new TextDecoder("utf-8").decode(data).replace(/\0+$/, "");
+        continue;
+      }
+      if (typeflag === "x" || typeflag === "g") {
+        // Cabecera extendida PAX: pares "longitud clave=valor\n".
+        // OJO: "longitud" está en BYTES del registro completo (incluida ella misma
+        // y el \n final), así que hay que trocear sobre los bytes crudos, nunca
+        // sobre el string ya decodificado como UTF-8 (una "ñ" ocupa 2 bytes pero
+        // 1 carácter JS, y eso desalinea el corte si se hace después de decode()).
+        const overrides = {};
+        let p = 0;
+        while (p < data.length) {
+          // Los dígitos de longitud y el espacio siempre son ASCII puro.
+          let sp = p;
+          while (sp < data.length && data[sp] !== 0x20 /* ' ' */) sp++;
+          if (sp >= data.length) break;
+          const lenStr = new TextDecoder("ascii").decode(data.subarray(p, sp));
+          const len = parseInt(lenStr, 10);
+          if (!len || len <= 0) break;
+          const recordBytes = data.subarray(p, p + len);
+          // Busca el primer '=' (0x3D) dentro del registro para separar clave/valor
+          let eq = -1;
+          for (let i = sp - p; i < recordBytes.length; i++) {
+            if (recordBytes[i] === 0x3D) { eq = i; break; }
+          }
+          if (eq !== -1) {
+            const key = new TextDecoder("utf-8").decode(recordBytes.subarray(sp - p + 1, eq)).trim();
+            let valBytes = recordBytes.subarray(eq + 1);
+            // quita el \n final del registro
+            if (valBytes.length && valBytes[valBytes.length - 1] === 0x0A) {
+              valBytes = valBytes.subarray(0, valBytes.length - 1);
+            }
+            overrides[key] = new TextDecoder("utf-8").decode(valBytes);
+          }
+          p += len;
+        }
+        paxOverrides = overrides;
+        continue;
+      }
+
+      if (longNameOverride) { name = longNameOverride; longNameOverride = null; }
+      if (paxOverrides) {
+        if (paxOverrides.path) name = paxOverrides.path;
+        paxOverrides = null;
+      }
+
+      // '0' y '\0' = fichero normal, '5' = directorio; otros tipos (enlaces) se ignoran
+      if (typeflag === "0" || typeflag === "\0" || typeflag === "") {
+        entries.push({ name, size, type: "file", data });
+      } else if (typeflag === "5") {
+        entries.push({ name, size: 0, type: "dir", data: new Uint8Array(0) });
+      }
+      // enlaces simbólicos/duros (typeflag '1'/'2') se ignoran: no aportan contenido real
+    }
+    return entries;
+  }
+
+  const api = { untar };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else global.MBZTar = api;
+})(typeof window !== "undefined" ? window : globalThis);
+
+
+/*!
+ * worker.js — Handler del Web Worker de MoodleExtractor. Vive embebido en index.html
+ * (ver <script id="mbz-worker-source">) y se instancia como Blob para no
+ * necesitar un archivo .js aparte. Solo hace el trabajo pesado sin DOM:
+ * descomprimir GZIP y desempaquetar TAR. La interpretación de XML (que sí
+ * necesita DOMParser) se hace de vuelta en el hilo principal.
+ */
+self.onmessage = function (ev) {
+  const msg = ev.data;
+  if (msg.type !== "unpack") return;
+  try {
+    const bytes = new Uint8Array(msg.buffer);
+    const report = (stage, extra) => self.postMessage({ type: "progress", stage, extra });
+
+    report("descomprimiendo");
+    const tarBytes = MBZInflate.gunzip(bytes);
+
+    report("desempaquetando");
+    const entries = MBZTar.untar(tarBytes);
+
+    const files = [];
+    const transferList = [];
+    for (const e of entries) {
+      if (e.type !== "file") continue;
+      const name = e.name.replace(/^\.\//, "").replace(/^\/+/, "");
+      // Copiamos a un ArrayBuffer propio y "transferible" (el original es un
+      // subarray sobre el buffer gigante del tar completo, que no conviene
+      // transferir entero: perderíamos acceso a las demás entradas).
+      const copy = e.data.slice().buffer;
+      files.push({ name, buffer: copy });
+      transferList.push(copy);
+    }
+    self.postMessage({ type: "done", files }, transferList);
+  } catch (err) {
+    self.postMessage({ type: "error", message: err && err.message ? err.message : String(err) });
+  }
+};
+
+  </script>
+
+  <script>
+/*!
+ * inflate.js — Descompresor DEFLATE (RFC 1951) y envoltorio GZIP (RFC 1952)
+ * escrito desde cero, sin dependencias externas, para MoodleExtractor.
+ * Basado en el algoritmo estándar de Huffman canónico + LZ77 descrito en RFC1951.
+ */
+(function (global) {
+  "use strict";
+
+  // ---- Tablas fijas de RFC1951 ----
+  const LENGTH_BASE = [3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,67,83,99,115,131,163,195,227,258];
+  const LENGTH_EXTRA = [0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0];
+  const DIST_BASE = [1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577];
+  const DIST_EXTRA = [0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13];
+  const CLC_ORDER = [16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15];
+
+  class BitReader {
+    constructor(bytes) {
+      this.bytes = bytes;
+      this.pos = 0;      // byte position
+      this.bitBuf = 0;   // bit accumulator
+      this.bitCnt = 0;   // number of valid bits in bitBuf
+    }
+    // Lee n bits (0-24 de golpe es seguro), LSB-first como exige DEFLATE
+    readBits(n) {
+      while (this.bitCnt < n) {
+        if (this.pos >= this.bytes.length) throw new Error("inflate: fin de datos inesperado");
+        this.bitBuf |= this.bytes[this.pos++] << this.bitCnt;
+        this.bitCnt += 8;
+      }
+      const val = this.bitBuf & ((1 << n) - 1);
+      this.bitBuf >>>= n;
+      this.bitCnt -= n;
+      return val;
+    }
+    alignToByte() {
+      this.bitBuf = 0;
+      this.bitCnt = 0;
+    }
+  }
+
+  // Construye una tabla de decodificación de Huffman canónica a partir de
+  // una lista de longitudes de código (índice = símbolo, valor = longitud en bits).
+  // Devuelve { table: Uint16Array(hasta 2^maxBits), maxBits } donde cada entrada
+  // codifica (símbolo << 5) | longitud, indexada por los bits leídos LSB-first invertidos.
+  function buildHuffman(lengths) {
+    const maxBits = Math.max(0, ...lengths);
+    if (maxBits === 0) return { table: new Uint32Array(1), maxBits: 0 };
+    const blCount = new Array(maxBits + 1).fill(0);
+    for (const l of lengths) if (l > 0) blCount[l]++;
+    const nextCode = new Array(maxBits + 1).fill(0);
+    let code = 0;
+    for (let bits = 1; bits <= maxBits; bits++) {
+      code = (code + blCount[bits - 1]) << 1;
+      nextCode[bits] = code;
+    }
+    const size = 1 << maxBits;
+    const table = new Uint32Array(size);
+    for (let sym = 0; sym < lengths.length; sym++) {
+      const len = lengths[sym];
+      if (len === 0) continue;
+      let c = nextCode[len]++;
+      // Los códigos Huffman de DEFLATE se leen MSB-first, pero el stream de bits
+      // es LSB-first, así que invertimos los bits de "c" a "len" bits para poder
+      // indexar la tabla directamente con lo leído del BitReader.
+      let rev = 0;
+      for (let i = 0; i < len; i++) {
+        rev = (rev << 1) | ((c >>> i) & 1);
+      }
+      // Rellenamos todas las entradas cuyo sufijo de maxBits-len bits coincide,
+      // porque el lector no sabe de antemano cuántos bits tiene el código.
+      const step = 1 << len;
+      for (let fill = rev; fill < size; fill += step) {
+        table[fill] = (sym << 5) | len;
+      }
+    }
+    return { table, maxBits };
+  }
+
+  function decodeSymbol(br, huff) {
+    if (huff.maxBits === 0) throw new Error("inflate: tabla Huffman vacía");
+    // Miramos maxBits bits sin consumir para indexar la tabla precalculada.
+    while (br.bitCnt < huff.maxBits && br.pos < br.bytes.length) {
+      br.bitBuf |= br.bytes[br.pos++] << br.bitCnt;
+      br.bitCnt += 8;
+    }
+    const idx = br.bitBuf & ((1 << huff.maxBits) - 1);
+    const entry = huff.table[idx];
+    const len = entry & 31;
+    if (len === 0) throw new Error("inflate: código Huffman inválido");
+    br.bitBuf >>>= len;
+    br.bitCnt -= len;
+    return entry >>> 5;
+  }
+
+  function buildFixedHuffman() {
+    const litLengths = new Array(288);
+    for (let i = 0; i <= 143; i++) litLengths[i] = 8;
+    for (let i = 144; i <= 255; i++) litLengths[i] = 9;
+    for (let i = 256; i <= 279; i++) litLengths[i] = 7;
+    for (let i = 280; i <= 287; i++) litLengths[i] = 8;
+    const distLengths = new Array(30).fill(5);
+    return { lit: buildHuffman(litLengths), dist: buildHuffman(distLengths) };
+  }
+  let FIXED = null;
+
+  // Descomprime un bloque DEFLATE crudo (sin cabecera gzip/zlib) y devuelve Uint8Array.
+  function inflateRaw(input, expectedSize) {
+    const br = new BitReader(input);
+    // Buffer de salida dinámico
+    let out = new Uint8Array(expectedSize && expectedSize > 0 ? expectedSize : Math.max(1024, input.length * 3));
+    let outPos = 0;
+    function ensure(n) {
+      if (outPos + n > out.length) {
+        let newLen = out.length * 2;
+        while (newLen < outPos + n) newLen *= 2;
+        const bigger = new Uint8Array(newLen);
+        bigger.set(out.subarray(0, outPos));
+        out = bigger;
+      }
+    }
+
+    let final = 0;
+    do {
+      final = br.readBits(1);
+      const type = br.readBits(2);
+      if (type === 0) {
+        // Bloque sin comprimir
+        br.alignToByte();
+        if (br.pos + 4 > br.bytes.length) throw new Error("inflate: cabecera de bloque STORED truncada");
+        const len = br.bytes[br.pos] | (br.bytes[br.pos + 1] << 8);
+        br.pos += 4; // len + ~len
+        ensure(len);
+        out.set(br.bytes.subarray(br.pos, br.pos + len), outPos);
+        outPos += len;
+        br.pos += len;
+      } else if (type === 1 || type === 2) {
+        let litHuff, distHuff;
+        if (type === 1) {
+          if (!FIXED) FIXED = buildFixedHuffman();
+          litHuff = FIXED.lit;
+          distHuff = FIXED.dist;
+        } else {
+          const hlit = br.readBits(5) + 257;
+          const hdist = br.readBits(5) + 1;
+          const hclen = br.readBits(4) + 4;
+          const clLengths = new Array(19).fill(0);
+          for (let i = 0; i < hclen; i++) clLengths[CLC_ORDER[i]] = br.readBits(3);
+          const clHuff = buildHuffman(clLengths);
+          const allLengths = new Array(hlit + hdist).fill(0);
+          let i = 0;
+          while (i < hlit + hdist) {
+            const sym = decodeSymbol(br, clHuff);
+            if (sym < 16) {
+              allLengths[i++] = sym;
+            } else if (sym === 16) {
+              const rep = br.readBits(2) + 3;
+              const prev = i > 0 ? allLengths[i - 1] : 0;
+              for (let r = 0; r < rep && i < allLengths.length; r++) allLengths[i++] = prev;
+            } else if (sym === 17) {
+              const rep = br.readBits(3) + 3;
+              for (let r = 0; r < rep && i < allLengths.length; r++) allLengths[i++] = 0;
+            } else if (sym === 18) {
+              const rep = br.readBits(7) + 11;
+              for (let r = 0; r < rep && i < allLengths.length; r++) allLengths[i++] = 0;
+            } else {
+              throw new Error("inflate: símbolo de longitud de código inválido");
+            }
+          }
+          litHuff = buildHuffman(allLengths.slice(0, hlit));
+          distHuff = buildHuffman(allLengths.slice(hlit));
+        }
+        // Decodificación del cuerpo comprimido (literales / longitud+distancia)
+        for (;;) {
+          const sym = decodeSymbol(br, litHuff);
+          if (sym < 256) {
+            ensure(1);
+            out[outPos++] = sym;
+          } else if (sym === 256) {
+            break; // fin de bloque
+          } else {
+            const lenIdx = sym - 257;
+            if (lenIdx >= LENGTH_BASE.length) throw new Error("inflate: código de longitud fuera de rango");
+            const length = LENGTH_BASE[lenIdx] + br.readBits(LENGTH_EXTRA[lenIdx]);
+            const distSym = decodeSymbol(br, distHuff);
+            if (distSym >= DIST_BASE.length) throw new Error("inflate: código de distancia fuera de rango");
+            const dist = DIST_BASE[distSym] + br.readBits(DIST_EXTRA[distSym]);
+            ensure(length);
+            let src = outPos - dist;
+            if (src < 0) throw new Error("inflate: distancia LZ77 inválida");
+            for (let k = 0; k < length; k++) {
+              out[outPos] = out[src];
+              outPos++; src++;
+            }
+          }
+        }
+      } else {
+        throw new Error("inflate: tipo de bloque DEFLATE reservado/no soportado");
+      }
+    } while (final !== 1);
+
+    return out.subarray(0, outPos);
+  }
+
+  // CRC32 estándar (usado por gzip y por nuestro escritor de ZIP)
+  let CRC_TABLE = null;
+  function crc32(bytes, crc) {
+    if (!CRC_TABLE) {
+      CRC_TABLE = new Uint32Array(256);
+      for (let n = 0; n < 256; n++) {
+        let c = n;
+        for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        CRC_TABLE[n] = c >>> 0;
+      }
+    }
+    crc = (crc === undefined ? 0xFFFFFFFF : (crc ^ 0xFFFFFFFF)) >>> 0;
+    for (let i = 0; i < bytes.length; i++) {
+      crc = (CRC_TABLE[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8)) >>> 0;
+    }
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  // Descomprime un archivo .gz completo (cabecera GZIP + deflate + CRC32/ISIZE)
+  function gunzip(bytes) {
+    if (bytes.length < 18 || bytes[0] !== 0x1f || bytes[1] !== 0x8b) {
+      throw new Error("El archivo no tiene cabecera GZIP válida (¿seguro que es un .mbz?)");
+    }
+    const cm = bytes[2];
+    if (cm !== 8) throw new Error("Método de compresión GZIP no soportado (esperado deflate)");
+    const flg = bytes[3];
+    let pos = 10;
+    if (flg & 0x04) { // FEXTRA
+      const xlen = bytes[pos] | (bytes[pos + 1] << 8);
+      pos += 2 + xlen;
+    }
+    if (flg & 0x08) { // FNAME
+      while (bytes[pos] !== 0) pos++;
+      pos++;
+    }
+    if (flg & 0x10) { // FCOMMENT
+      while (bytes[pos] !== 0) pos++;
+      pos++;
+    }
+    if (flg & 0x02) { // FHCRC
+      pos += 2;
+    }
+    const isizeOffset = bytes.length - 4;
+    const isize = (bytes[isizeOffset] | (bytes[isizeOffset + 1] << 8) | (bytes[isizeOffset + 2] << 16) | (bytes[isizeOffset + 3] << 24)) >>> 0;
+    const deflateData = bytes.subarray(pos, bytes.length - 8);
+    const out = inflateRaw(deflateData, isize);
+    return out;
+  }
+
+  const api = { inflateRaw, gunzip, crc32 };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else global.MBZInflate = api;
+})(typeof window !== "undefined" ? window : globalThis);
+
+  </script>
+  <script>
+/*!
+ * tar.js — Lector de archivos TAR (formato ustar, con soporte de nombres largos
+ * GNU ('L') y cabeceras PAX ('x')) escrito desde cero para MoodleExtractor.
+ * Devuelve un array de { name, size, type, data (Uint8Array) }.
+ */
+(function (global) {
+  "use strict";
+
+  function readString(bytes, offset, length) {
+    let end = offset;
+    const stop = offset + length;
+    while (end < stop && bytes[end] !== 0) end++;
+    return new TextDecoder("utf-8").decode(bytes.subarray(offset, end));
+  }
+
+  function readOctal(bytes, offset, length) {
+    // Los tamaños pueden venir en octal ASCII clásico, o en formato binario
+    // GNU "base-256" cuando el valor no cabe en el campo (bit alto del primer byte a 1).
+    if (bytes[offset] & 0x80) {
+      let val = 0n;
+      for (let i = 1; i < length; i++) {
+        val = (val << 8n) | BigInt(bytes[offset + i]);
+      }
+      return Number(val);
+    }
+    const str = readString(bytes, offset, length).trim();
+    if (str === "") return 0;
+    return parseInt(str, 8) || 0;
+  }
+
+  function untar(bytes) {
+    const entries = [];
+    let pos = 0;
+    let longNameOverride = null; // de una entrada GNU 'L' previa
+    let paxOverrides = null; // objeto {path: "..."} de una cabecera PAX 'x' previa
+
+    while (pos + 512 <= bytes.length) {
+      // Un bloque de 512 ceros marca fin de archivo (normalmente van dos seguidos)
+      let allZero = true;
+      for (let i = 0; i < 512; i++) { if (bytes[pos + i] !== 0) { allZero = false; break; } }
+      if (allZero) break;
+
+      const header = bytes.subarray(pos, pos + 512);
+      let name = readString(header, 0, 100);
+      const size = readOctal(header, 124, 12);
+      const typeflag = String.fromCharCode(header[156] || 0);
+      const magic = readString(header, 257, 6);
+      let prefix = "";
+      if (magic === "ustar") {
+        prefix = readString(header, 345, 155);
+      }
+      if (prefix) name = prefix + "/" + name;
+
+      pos += 512;
+      const dataStart = pos;
+      const dataEnd = pos + size;
+      if (dataEnd > bytes.length) {
+        throw new Error("tar: entrada truncada (¿archivo .mbz incompleto o corrupto?)");
+      }
+      const data = bytes.subarray(dataStart, dataEnd);
+      // Avanza al siguiente múltiplo de 512
+      pos += size;
+      const pad = (512 - (size % 512)) % 512;
+      pos += pad;
+
+      if (typeflag === "L") {
+        // GNU long name: el contenido de esta entrada es el nombre real de la siguiente
+        longNameOverride = new TextDecoder("utf-8").decode(data).replace(/\0+$/, "");
+        continue;
+      }
+      if (typeflag === "x" || typeflag === "g") {
+        // Cabecera extendida PAX: pares "longitud clave=valor\n".
+        // OJO: "longitud" está en BYTES del registro completo (incluida ella misma
+        // y el \n final), así que hay que trocear sobre los bytes crudos, nunca
+        // sobre el string ya decodificado como UTF-8 (una "ñ" ocupa 2 bytes pero
+        // 1 carácter JS, y eso desalinea el corte si se hace después de decode()).
+        const overrides = {};
+        let p = 0;
+        while (p < data.length) {
+          // Los dígitos de longitud y el espacio siempre son ASCII puro.
+          let sp = p;
+          while (sp < data.length && data[sp] !== 0x20 /* ' ' */) sp++;
+          if (sp >= data.length) break;
+          const lenStr = new TextDecoder("ascii").decode(data.subarray(p, sp));
+          const len = parseInt(lenStr, 10);
+          if (!len || len <= 0) break;
+          const recordBytes = data.subarray(p, p + len);
+          // Busca el primer '=' (0x3D) dentro del registro para separar clave/valor
+          let eq = -1;
+          for (let i = sp - p; i < recordBytes.length; i++) {
+            if (recordBytes[i] === 0x3D) { eq = i; break; }
+          }
+          if (eq !== -1) {
+            const key = new TextDecoder("utf-8").decode(recordBytes.subarray(sp - p + 1, eq)).trim();
+            let valBytes = recordBytes.subarray(eq + 1);
+            // quita el \n final del registro
+            if (valBytes.length && valBytes[valBytes.length - 1] === 0x0A) {
+              valBytes = valBytes.subarray(0, valBytes.length - 1);
+            }
+            overrides[key] = new TextDecoder("utf-8").decode(valBytes);
+          }
+          p += len;
+        }
+        paxOverrides = overrides;
+        continue;
+      }
+
+      if (longNameOverride) { name = longNameOverride; longNameOverride = null; }
+      if (paxOverrides) {
+        if (paxOverrides.path) name = paxOverrides.path;
+        paxOverrides = null;
+      }
+
+      // '0' y '\0' = fichero normal, '5' = directorio; otros tipos (enlaces) se ignoran
+      if (typeflag === "0" || typeflag === "\0" || typeflag === "") {
+        entries.push({ name, size, type: "file", data });
+      } else if (typeflag === "5") {
+        entries.push({ name, size: 0, type: "dir", data: new Uint8Array(0) });
+      }
+      // enlaces simbólicos/duros (typeflag '1'/'2') se ignoran: no aportan contenido real
+    }
+    return entries;
+  }
+
+  const api = { untar };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else global.MBZTar = api;
+})(typeof window !== "undefined" ? window : globalThis);
+
+  </script>
+  <script>
+/*!
+ * zipwriter.js — Generador de archivos ZIP (método STORED, sin comprimir)
+ * escrito desde cero para MoodleExtractor. No necesita comprimir: la selección
+ * del profesor ya viene de un .mbz comprimido, así que empaquetar "en crudo"
+ * es instantáneo y evita reimplementar DEFLATE de escritura.
+ */
+(function (global) {
+  "use strict";
+
+  function getCrc32(bytes) {
+    // Reutiliza la tabla/función de inflate.js si está disponible; si no, calcula una propia.
+    if (typeof MBZInflate !== "undefined" && MBZInflate.crc32) return MBZInflate.crc32(bytes);
+    let table = getCrc32._table;
+    if (!table) {
+      table = new Uint32Array(256);
+      for (let n = 0; n < 256; n++) {
+        let c = n;
+        for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        table[n] = c >>> 0;
+      }
+      getCrc32._table = table;
+    }
+    let crc = 0xFFFFFFFF;
+    for (let i = 0; i < bytes.length; i++) crc = (table[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8)) >>> 0;
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  function dosDateTime(date) {
+    date = date || new Date();
+    const dosTime = ((date.getHours() & 0x1F) << 11) | ((date.getMinutes() & 0x3F) << 5) | ((date.getSeconds() >> 1) & 0x1F);
+    const dosDate = (((date.getFullYear() - 1980) & 0x7F) << 9) | (((date.getMonth() + 1) & 0xF) << 5) | (date.getDate() & 0x1F);
+    return { dosTime, dosDate };
+  }
+
+  // Convierte un string JS a bytes UTF-8, marcando el flag de idioma UTF-8 (EFS) en el ZIP.
+  function utf8Bytes(str) {
+    return new TextEncoder().encode(str);
+  }
+
+  /**
+   * Crea un ZIP a partir de una lista de entradas { path, data (Uint8Array), date? }.
+   * `path` usa "/" como separador; se crean automáticamente las carpetas intermedias.
+   * Devuelve un Uint8Array con el ZIP completo.
+   */
+  function createZip(entries) {
+    const localChunks = [];
+    const centralChunks = [];
+    let offset = 0;
+
+    for (const entry of entries) {
+      const nameBytes = utf8Bytes(entry.path.replace(/\\/g, "/"));
+      const data = entry.data || new Uint8Array(0);
+      const crc = getCrc32(data);
+      const { dosTime, dosDate } = dosDateTime(entry.date);
+      const GP_FLAG = 0x0800; // bit 11: nombre de archivo en UTF-8
+
+      // --- Local file header ---
+      const local = new Uint8Array(30 + nameBytes.length);
+      const lv = new DataView(local.buffer);
+      lv.setUint32(0, 0x04034b50, true);      // firma
+      lv.setUint16(4, 20, true);              // versión necesaria
+      lv.setUint16(6, GP_FLAG, true);         // flags
+      lv.setUint16(8, 0, true);               // método: 0 = sin comprimir
+      lv.setUint16(10, dosTime, true);
+      lv.setUint16(12, dosDate, true);
+      lv.setUint32(14, crc, true);
+      lv.setUint32(18, data.length, true);    // tamaño comprimido = tamaño real
+      lv.setUint32(22, data.length, true);    // tamaño sin comprimir
+      lv.setUint16(26, nameBytes.length, true);
+      lv.setUint16(28, 0, true);              // sin campo extra
+      local.set(nameBytes, 30);
+
+      localChunks.push(local, data);
+      const localOffset = offset;
+      offset += local.length + data.length;
+
+      // --- Central directory record ---
+      const central = new Uint8Array(46 + nameBytes.length);
+      const cv = new DataView(central.buffer);
+      cv.setUint32(0, 0x02014b50, true);
+      cv.setUint16(4, 20, true);              // versión que lo hizo
+      cv.setUint16(6, 20, true);              // versión necesaria
+      cv.setUint16(8, GP_FLAG, true);
+      cv.setUint16(10, 0, true);
+      cv.setUint16(12, dosTime, true);
+      cv.setUint16(14, dosDate, true);
+      cv.setUint32(16, crc, true);
+      cv.setUint32(20, data.length, true);
+      cv.setUint32(24, data.length, true);
+      cv.setUint16(28, nameBytes.length, true);
+      cv.setUint16(30, 0, true); // extra
+      cv.setUint16(32, 0, true); // comment
+      cv.setUint16(34, 0, true); // disk number start
+      cv.setUint16(36, 0, true); // internal attrs
+      cv.setUint32(38, 0, true); // external attrs
+      cv.setUint32(42, localOffset, true);
+      central.set(nameBytes, 46);
+      centralChunks.push(central);
+    }
+
+    const centralStart = offset;
+    let centralSize = 0;
+    for (const c of centralChunks) centralSize += c.length;
+
+    const eocd = new Uint8Array(22);
+    const ev = new DataView(eocd.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(4, 0, true);
+    ev.setUint16(6, 0, true);
+    ev.setUint16(8, entries.length, true);
+    ev.setUint16(10, entries.length, true);
+    ev.setUint32(12, centralSize, true);
+    ev.setUint32(16, centralStart, true);
+    ev.setUint16(20, 0, true); // sin comentario
+
+    const totalSize = offset + centralSize + eocd.length;
+    const out = new Uint8Array(totalSize);
+    let pos = 0;
+    for (const chunk of localChunks) { out.set(chunk, pos); pos += chunk.length; }
+    for (const chunk of centralChunks) { out.set(chunk, pos); pos += chunk.length; }
+    out.set(eocd, pos);
+    return out;
+  }
+
+  const api = { createZip, getCrc32 };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else global.MBZZip = api;
+})(typeof window !== "undefined" ? window : globalThis);
+
+  </script>
+  <script>
+/*!
+ * pdfwriter.js — Generador mínimo de PDF (texto con ajuste de línea, usando
+ * las fuentes base-14 Helvetica/Helvetica-Bold, sin necesidad de incrustar
+ * ninguna fuente) escrito desde cero para MoodleExtractor.
+ *
+ * No pretende ser un motor de maquetación HTML→PDF: convierte texto plano
+ * (ya extraído de las actividades de Moodle) en un PDF legible, con título,
+ * párrafos y saltos de página automáticos. Las imágenes u otros adjuntos se
+ * exportan aparte como archivos independientes en la misma carpeta.
+ */
+(function (global) {
+  "use strict";
+
+  const PAGE_W = 595.28; // A4 en puntos (72dpi)
+  const PAGE_H = 841.89;
+  const MARGIN = 56;
+  const TITLE_SIZE = 16;
+  const BODY_SIZE = 11;
+  const LINE_HEIGHT = 15;
+
+  // Anchos de carácter de Helvetica normal, en milésimas de em, para WinAnsiEncoding
+  // (tabla estándar del PDF Reference, Apéndice D — necesaria para envolver líneas
+  // con un mínimo de precisión sin tener que incrustar una fuente real).
+  const HELV_WIDTHS = {
+    32:278,33:278,34:355,35:556,36:556,37:889,38:667,39:191,40:333,41:333,42:389,43:584,44:278,45:333,46:278,47:278,
+    48:556,49:556,50:556,51:556,52:556,53:556,54:556,55:556,56:556,57:556,58:278,59:278,60:584,61:584,62:584,63:556,
+    64:1015,65:667,66:667,67:722,68:722,69:667,70:611,71:778,72:722,73:278,74:500,75:667,76:556,77:833,78:722,79:778,
+    80:667,81:778,82:722,83:667,84:611,85:722,86:667,87:944,88:667,89:667,90:611,91:278,92:278,93:278,94:469,95:556,
+    96:333,97:556,98:556,99:500,100:556,101:556,102:278,103:556,104:556,105:222,106:222,107:500,108:222,109:833,
+    110:556,111:556,112:556,113:556,114:333,115:500,116:278,117:556,118:500,119:722,120:500,121:500,122:500,
+    123:334,124:260,125:334,126:584,
+    // Vocales acentuadas / ñ / signos de apertura españoles (WinAnsi, ancho similar a la letra base)
+    161:333, /* ¡ */ 191:556, /* ¿ */
+    193:667,201:667,205:278,211:778,218:722,209:722, // Á É Í Ó Ú Ñ
+    225:556,233:556,237:222,243:556,250:556,241:556,  // á é í ó ú ñ
+    252:556,220:722, // ü Ü
+    8211:556,8212:1000,8216:222,8217:222,8220:333,8221:333,8226:350,8230:1000, // – — ' ' " " • …
+  };
+  const HELV_BOLD_WIDTHS = Object.assign({}, HELV_WIDTHS, {
+    65:722,66:667,67:722,68:722,69:667,70:611,71:778,72:722,73:278,74:556,75:722,76:611,77:833,78:722,79:778,
+    97:556,98:611,99:556,100:611,101:556,102:333,103:611,104:611,105:278,106:278,107:556,108:278,109:889,
+    110:611,111:611,112:611,113:611,114:389,115:556,116:333,117:611,118:556,119:778,120:556,121:556,122:500,
+  });
+
+  function textWidth(str, size, bold) {
+    const table = bold ? HELV_BOLD_WIDTHS : HELV_WIDTHS;
+    let w = 0;
+    for (const ch of str) {
+      const code = ch.codePointAt(0);
+      w += (table[code] || 556);
+    }
+    return (w / 1000) * size;
+  }
+
+  // Ajusta un párrafo a líneas de máximo maxWidth puntos, respetando palabras.
+  function wrapParagraph(text, size, bold, maxWidth) {
+    const words = text.split(/\s+/).filter(Boolean);
+    const lines = [];
+    let cur = "";
+    for (const word of words) {
+      const trial = cur ? cur + " " + word : word;
+      if (textWidth(trial, size, bold) > maxWidth && cur) {
+        lines.push(cur);
+        cur = word;
+      } else {
+        cur = trial;
+      }
+    }
+    if (cur) lines.push(cur);
+    return lines;
+  }
+
+  // Escapa caracteres especiales de las cadenas literales PDF: ( ) \
+  // y convierte a WinAnsi (Latin-1) sustituyendo lo no representable por "?".
+  // WinAnsiEncoding (≈ CP1252) coincide con Latin-1 en 0x00-0x7F y 0xA0-0xFF,
+  // pero en el rango 0x80-0x9F tiene tipografía "inteligente" (comillas curvas,
+  // rayas, puntos suspensivos...) en vez de los controles C1 de Latin-1. Muchos
+  // textos de Moodle usan justamente esos caracteres, así que merece la pena
+  // mapearlos bien en vez de perderlos como "?".
+  const CP1252_SPECIALS = {
+    0x20AC:0x80, 0x201A:0x82, 0x0192:0x83, 0x201E:0x84, 0x2026:0x85, 0x2020:0x86, 0x2021:0x87,
+    0x02C6:0x88, 0x2030:0x89, 0x0160:0x8A, 0x2039:0x8B, 0x0152:0x8C, 0x017D:0x8E,
+    0x2018:0x91, 0x2019:0x92, 0x201C:0x93, 0x201D:0x94, 0x2022:0x95, 0x2013:0x96, 0x2014:0x97,
+    0x02DC:0x98, 0x2122:0x99, 0x0161:0x9A, 0x203A:0x9B, 0x0153:0x9C, 0x017E:0x9E, 0x0178:0x9F,
+  };
+  function toWinAnsiByte(codepoint) {
+    if (codepoint <= 0xFF) return codepoint; // ASCII + Latin-1 (incl. acentos españoles)
+    if (CP1252_SPECIALS[codepoint] !== undefined) return CP1252_SPECIALS[codepoint];
+    return 0x3F; // '?' — glifo no representable en WinAnsi sin fuente incrustada
+  }
+
+  // Convierte el texto a la codificación de bytes WinAnsi real y escapa los
+  // caracteres especiales de las cadenas literales PDF: ( ) \
+  // OJO: NO se puede usar TextEncoder (UTF-8) para el resultado — codificaría
+  // "ñ" (byte WinAnsi 0xF1) como dos bytes UTF-8 (0xC3 0xB1), y el lector de
+  // PDF, interpretándolos con WinAnsiEncoding, dibujaría "Ã±" en vez de "ñ".
+  function pdfEscape(str) {
+    let out = "";
+    for (const ch of str) {
+      out += String.fromCharCode(toWinAnsiByte(ch.codePointAt(0)));
+    }
+    return out.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+  }
+
+  // Vuelca un string ya restringido a codepoints 0-255 (el que devuelve pdfEscape)
+  // a bytes reales, uno por carácter.
+  function latin1Bytes(str) {
+    const out = new Uint8Array(str.length);
+    for (let i = 0; i < str.length; i++) out[i] = str.charCodeAt(i) & 0xFF;
+    return out;
+  }
+
+  /**
+   * Genera un PDF a partir de un título y una lista de bloques de contenido.
+   * blocks: array de { type: "heading"|"paragraph"|"spacer", text? }
+   * Devuelve un Uint8Array con el PDF completo.
+   */
+  function createTextPdf(title, blocks) {
+    const maxWidth = PAGE_W - MARGIN * 2;
+    // 1) Construye el flujo de líneas (con su tamaño/negrita) repartido en páginas
+    const pages = [];
+    let cur = [];
+    let y = PAGE_H - MARGIN;
+
+    function newPage() {
+      if (cur.length) pages.push(cur);
+      cur = [];
+      y = PAGE_H - MARGIN;
+    }
+    function addLine(text, size, bold) {
+      if (y < MARGIN + LINE_HEIGHT) newPage();
+      cur.push({ text, size, bold, y });
+      y -= LINE_HEIGHT;
+    }
+
+    for (const line of wrapParagraph(title || "Sin título", TITLE_SIZE, true, maxWidth)) addLine(line, TITLE_SIZE, true);
+    y -= LINE_HEIGHT * 0.4;
+
+    for (const block of blocks) {
+      if (block.type === "spacer") { y -= LINE_HEIGHT * 0.6; continue; }
+      if (block.type === "pagebreak") { newPage(); continue; }
+      if (block.type === "heading") {
+        if (y < MARGIN + LINE_HEIGHT * 2) newPage();
+        y -= LINE_HEIGHT * 0.3;
+        for (const line of wrapParagraph(block.text, 13, true, maxWidth)) addLine(line, 13, true);
+        continue;
+      }
+      // paragraph
+      const paraLines = wrapParagraph(block.text || "", BODY_SIZE, false, maxWidth);
+      for (const line of paraLines) addLine(line, BODY_SIZE, false);
+      y -= LINE_HEIGHT * 0.35;
+    }
+    newPage();
+    if (pages.length === 0) pages.push([]);
+
+    // 2) Construye los objetos PDF con IDs reservados secuencialmente, y serializa
+    return assemble();
+
+    function assemble() {
+      const objs = []; // { id, content: string|null, streamBytes?: Uint8Array }
+      let nextId = 1;
+      function reserve() { return nextId++; }
+
+      const fF1 = reserve();
+      const fF2 = reserve();
+      const pagesId = reserve();
+      const pageObjIds = pages.map(() => reserve());
+      const contentObjIds = pages.map(() => reserve());
+      const catalogId = reserve();
+
+      objs.push({ id: fF1, content: "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>" });
+      objs.push({ id: fF2, content: "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>" });
+
+      pages.forEach((pageLines, i) => {
+        // El stream se construye como bytes crudos, no como string+TextEncoder,
+        // porque el texto (Latin-1/WinAnsi) y la sintaxis PDF (ASCII) no comparten
+        // la misma codificación de los bytes >127 — ver latin1Bytes() más arriba.
+        const pieces = [];
+        const pushAscii = (s) => pieces.push(new TextEncoder().encode(s));
+        const pushLiteral = (escaped) => pieces.push(latin1Bytes(escaped));
+
+        pushAscii("BT\n");
+        let lastFont = null, lastSize = null;
+        for (const ln of pageLines) {
+          const fontKey = ln.bold ? "/F2" : "/F1";
+          if (fontKey !== lastFont || ln.size !== lastSize) {
+            pushAscii(`${fontKey} ${ln.size} Tf\n`);
+            lastFont = fontKey; lastSize = ln.size;
+          }
+          pushAscii(`1 0 0 1 ${MARGIN.toFixed(2)} ${ln.y.toFixed(2)} Tm\n(`);
+          pushLiteral(pdfEscape(ln.text));
+          pushAscii(") Tj\n");
+        }
+        pushAscii("ET\n");
+        let streamLen = 0;
+        for (const p of pieces) streamLen += p.length;
+        const bytes = new Uint8Array(streamLen);
+        let sp = 0;
+        for (const p of pieces) { bytes.set(p, sp); sp += p.length; }
+        objs.push({
+          id: pageObjIds[i],
+          content: `<< /Type /Page /Parent ${pagesId} 0 R /Resources << /Font << /F1 ${fF1} 0 R /F2 ${fF2} 0 R >> >> /MediaBox [0 0 ${PAGE_W} ${PAGE_H}] /Contents ${contentObjIds[i]} 0 R >>`,
+        });
+        objs.push({ id: contentObjIds[i], streamBytes: bytes });
+      });
+
+      objs.push({
+        id: pagesId,
+        content: `<< /Type /Pages /Kids [${pageObjIds.map(id => id + " 0 R").join(" ")}] /Count ${pageObjIds.length} >>`,
+      });
+      objs.push({ id: catalogId, content: `<< /Type /Catalog /Pages ${pagesId} 0 R >>` });
+
+      objs.sort((a, b) => a.id - b.id);
+
+      // 3) Serializa el archivo PDF completo con tabla xref
+      const chunks = [];
+      let offset = 0;
+      function push(strOrBytes) {
+        const bytes = typeof strOrBytes === "string" ? new TextEncoder().encode(strOrBytes) : strOrBytes;
+        chunks.push(bytes);
+        offset += bytes.length;
+      }
+      const xrefOffsets = new Array(objs.length + 1).fill(0);
+      push("%PDF-1.4\n");
+
+      for (const obj of objs) {
+        xrefOffsets[obj.id] = offset;
+        if (obj.streamBytes) {
+          push(`${obj.id} 0 obj\n<< /Length ${obj.streamBytes.length} >>\nstream\n`);
+          push(obj.streamBytes);
+          push("\nendstream\nendobj\n");
+        } else {
+          push(`${obj.id} 0 obj\n${obj.content}\nendobj\n`);
+        }
+      }
+
+      const xrefStart = offset;
+      let xref = `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n`;
+      for (let id = 1; id <= objs.length; id++) {
+        xref += String(xrefOffsets[id]).padStart(10, "0") + " 00000 n \n";
+      }
+      push(xref);
+      push(`trailer\n<< /Size ${objs.length + 1} /Root ${catalogId} 0 R >>\nstartxref\n${xrefStart}\n%%EOF`);
+
+      const total = chunks.reduce((a, c) => a + c.length, 0);
+      const out = new Uint8Array(total);
+      let p = 0;
+      for (const c of chunks) { out.set(c, p); p += c.length; }
+      return out;
+    }
+  }
+
+  const api = { createTextPdf };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else global.MBZPdf = api;
+})(typeof window !== "undefined" ? window : globalThis);
+
+  </script>
+  <script>
+/*!
+ * htmlutil.js — Convierte HTML (contenido de páginas/etiquetas de Moodle) a
+ * texto plano legible, conservando una estructura mínima de párrafos y listas.
+ * Usa el DOMParser nativo del navegador (modo "text/html", muy tolerante con
+ * marcado imperfecto); si por lo que sea no está disponible o falla, cae a un
+ * "stripper" manual basado en texto para no dejar nunca la conversión a medias.
+ */
+(function (global) {
+  "use strict";
+
+  const BLOCK_TAGS = new Set([
+    "P","DIV","BR","LI","UL","OL","H1","H2","H3","H4","H5","H6",
+    "TR","TABLE","BLOCKQUOTE","PRE","HR","SECTION","ARTICLE"
+  ]);
+
+  function walk(node, out) {
+    if (node.nodeType === 3 /* TEXT_NODE */) {
+      out.push(node.nodeValue || "");
+      return;
+    }
+    if (node.nodeType !== 1 /* ELEMENT_NODE */) return;
+    const tag = node.tagName ? node.tagName.toUpperCase() : "";
+    if (tag === "SCRIPT" || tag === "STYLE") return;
+    if (tag === "BR") { out.push("\n"); return; }
+    if (tag === "IFRAME" || tag === "VIDEO" || tag === "AUDIO" || tag === "SOURCE") {
+      const src = node.getAttribute ? node.getAttribute("src") : null;
+      if (src && !src.startsWith("@@PLUGINFILE@@")) out.push(`\n[Contenido incrustado: ${src}]\n`);
+      return;
+    }
+    if (tag === "LI") out.push("• ");
+    const children = node.childNodes || [];
+    for (let i = 0; i < children.length; i++) walk(children[i], out);
+    if (tag === "A") {
+      const href = node.getAttribute ? node.getAttribute("href") : null;
+      if (href && !href.startsWith("@@PLUGINFILE@@") && href !== "#") out.push(` (${href})`);
+    }
+    if (BLOCK_TAGS.has(tag)) out.push("\n");
+  }
+
+  function domToText(html) {
+    const doc = new DOMParser().parseFromString(`<div id="__root__">${html}</div>`, "text/html");
+    const root = doc.getElementById ? doc.getElementById("__root__") : doc.getElementsByTagName("div")[0];
+    const out = [];
+    walk(root, out);
+    return out.join("");
+  }
+
+  // Fallback manual: nunca debe usarse en un navegador real (DOMParser text/html
+  // es tolerante por especificación y no lanza excepciones), pero sirve de red
+  // de seguridad y para pruebas fuera del navegador.
+  function manualStrip(html) {
+    let text = html
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/(p|div|li|h[1-6]|tr|blockquote)>/gi, "\n")
+      .replace(/<li[^>]*>/gi, "• ")
+      .replace(/<(?:iframe|video|audio|source)[^>]*\ssrc=["']([^"']*)["'][^>]*>/gi,
+        (m, src) => (src.startsWith("@@PLUGINFILE@@") ? "" : `\n[Contenido incrustado: ${src}]\n`))
+      .replace(/<a\s+[^>]*href=["']([^"']*)["'][^>]*>(.*?)<\/a>/gis,
+        (m, href, inner) => (href.startsWith("@@PLUGINFILE@@") || href === "#" ? inner : `${inner} (${href})`))
+      .replace(/<[^>]+>/g, "");
+    text = text
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#0*39;/g, "'")
+      .replace(/&apos;/g, "'");
+    return text;
+  }
+
+  function cleanupWhitespace(text) {
+    return text
+      .replace(/\r\n/g, "\n")
+      .replace(/[ \t]+/g, " ")
+      .replace(/\n[ \t]+/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  }
+
+  function htmlToText(html) {
+    if (!html) return "";
+    let raw;
+    try {
+      if (typeof DOMParser === "undefined") throw new Error("DOMParser no disponible");
+      raw = domToText(html);
+    } catch (e) {
+      raw = manualStrip(html);
+    }
+    return cleanupWhitespace(raw);
+  }
+
+  // Extrae, sin decodificar el resto, los nombres de archivo referenciados como
+  // @@PLUGINFILE@@/nombre.ext dentro de contenido de Moodle (page/label/book...).
+  function extractPluginFileRefs(html) {
+    if (!html) return [];
+    const out = new Set();
+    const re = /@@PLUGINFILE@@\/([^"'\s)]+)/g;
+    let m;
+    while ((m = re.exec(html))) {
+      try { out.add(decodeURIComponent(m[1])); } catch (e) { out.add(m[1]); }
+    }
+    return Array.from(out);
+  }
+
+  // ---------- Cuestionarios: formatea preguntas+respuestas para PDF/TXT/vista previa ----------
+  const QTYPE_LABELS = {
+    multichoice: "Opción múltiple",
+    truefalse: "Verdadero/Falso",
+    shortanswer: "Respuesta corta",
+    essay: "Ensayo (respuesta abierta)",
+    numerical: "Numérica",
+    matching: "Emparejamiento",
+    description: "Texto informativo",
+    multianswer: "Respuestas incrustadas (Cloze)",
+    ddwtos: "Arrastrar y soltar palabras",
+    ddmarker: "Arrastrar y soltar sobre imagen",
+    gapselect: "Seleccionar en el texto",
+    calculated: "Calculada",
+  };
+  function qtypeLabel(qtype) { return QTYPE_LABELS[qtype] || qtype || "Pregunta"; }
+
+  function answerLabel(qtype, textRaw) {
+    if (qtype === "truefalse") {
+      const t = (textRaw || "").trim().toLowerCase();
+      if (t === "true") return "Verdadero";
+      if (t === "false") return "Falso";
+    }
+    return htmlToText(textRaw);
+  }
+
+  // Devuelve bloques { type, text } por pregunta, listos para intercalar en un PDF/TXT.
+  function quizToBlocks(quiz) {
+    const blocks = [];
+    if (!quiz || !quiz.questions || quiz.questions.length === 0) {
+      blocks.push({ type: "paragraph", text: "No se han podido extraer las preguntas de este cuestionario (puede que el backup no incluya el banco de preguntas)." });
+      return blocks;
+    }
+    quiz.questions.forEach((q, i) => {
+      blocks.push({ type: "heading", text: `Pregunta ${i + 1} — ${qtypeLabel(q.qtype)}` });
+      const qText = htmlToText(q.questiontextRaw);
+      if (qText) blocks.push({ type: "paragraph", text: qText });
+      if (q.qtype === "essay" || q.answers.length === 0) {
+        blocks.push({ type: "paragraph", text: "(Respuesta abierta — sin opciones que corregir automáticamente.)" });
+      } else if (q.qtype === "shortanswer" || q.qtype === "numerical") {
+        const correct = q.answers.filter(a => a.fraction > 0).map(a => answerLabel(q.qtype, a.textRaw));
+        blocks.push({ type: "paragraph", text: "Respuesta(s) válida(s): " + (correct.join(", ") || "(no especificada)") });
+      } else {
+        for (const a of q.answers) {
+          const mark = a.fraction > 0 ? " (correcta)" : "";
+          blocks.push({ type: "paragraph", text: "- " + answerLabel(q.qtype, a.textRaw) + mark });
+        }
+      }
+      blocks.push({ type: "spacer" });
+    });
+    return blocks;
+  }
+
+  // Misma información que quizToBlocks() pero como texto plano (para .txt y la vista previa en pantalla).
+  function quizToPlainText(quiz) {
+    const parts = [];
+    if (!quiz || !quiz.questions || quiz.questions.length === 0) {
+      return "No se han podido extraer las preguntas de este cuestionario (puede que el backup no incluya el banco de preguntas).";
+    }
+    quiz.questions.forEach((q, i) => {
+      const lines = [`Pregunta ${i + 1} — ${qtypeLabel(q.qtype)}`];
+      const qText = htmlToText(q.questiontextRaw);
+      if (qText) lines.push(qText);
+      if (q.qtype === "essay" || q.answers.length === 0) {
+        lines.push("(Respuesta abierta — sin opciones que corregir automáticamente.)");
+      } else if (q.qtype === "shortanswer" || q.qtype === "numerical") {
+        const correct = q.answers.filter(a => a.fraction > 0).map(a => answerLabel(q.qtype, a.textRaw));
+        lines.push("Respuesta(s) válida(s): " + (correct.join(", ") || "(no especificada)"));
+      } else {
+        for (const a of q.answers) {
+          const mark = a.fraction > 0 ? " (correcta)" : "";
+          lines.push("- " + answerLabel(q.qtype, a.textRaw) + mark);
+        }
+      }
+      parts.push(lines.join("\n"));
+    });
+    return parts.join("\n\n");
+  }
+
+  // ---------- Foros: discusiones y mensajes ----------
+  function forumToBlocks(discussions) {
+    const blocks = [];
+    if (!discussions || discussions.length === 0) {
+      blocks.push({ type: "paragraph", text: "No se han encontrado mensajes en este foro (puede que el backup se generara sin datos de usuario, o que el foro esté vacío)." });
+      return blocks;
+    }
+    discussions.forEach((d) => {
+      blocks.push({ type: "heading", text: "Debate: " + (d.name || "(sin título)") });
+      for (const p of d.posts) {
+        const prefix = p.parent ? "> " : "";
+        if (p.subject) blocks.push({ type: "paragraph", text: prefix + p.subject });
+        const msg = htmlToText(p.messageRaw);
+        if (msg) blocks.push({ type: "paragraph", text: msg });
+      }
+      blocks.push({ type: "spacer" });
+    });
+    return blocks;
+  }
+  function forumToPlainText(discussions) {
+    if (!discussions || discussions.length === 0) {
+      return "No se han encontrado mensajes en este foro (puede que el backup se generara sin datos de usuario, o que el foro esté vacío).";
+    }
+    return discussions.map(d => {
+      const lines = ["Debate: " + (d.name || "(sin título)")];
+      for (const p of d.posts) {
+        const prefix = p.parent ? "> " : "";
+        if (p.subject) lines.push(prefix + p.subject);
+        const msg = htmlToText(p.messageRaw);
+        if (msg) lines.push(msg);
+      }
+      return lines.join("\n");
+    }).join("\n\n");
+  }
+
+  // ---------- Glosarios: entradas ----------
+  function glossaryToBlocks(entries) {
+    const blocks = [];
+    if (!entries || entries.length === 0) {
+      blocks.push({ type: "paragraph", text: "No se han encontrado entradas en este glosario (puede que el backup se generara sin datos de usuario, o que esté vacío)." });
+      return blocks;
+    }
+    for (const e of entries) {
+      blocks.push({ type: "heading", text: e.concept || "(sin concepto)" });
+      const def = htmlToText(e.definitionRaw);
+      if (def) blocks.push({ type: "paragraph", text: def });
+    }
+    return blocks;
+  }
+  function glossaryToPlainText(entries) {
+    if (!entries || entries.length === 0) {
+      return "No se han encontrado entradas en este glosario (puede que el backup se generara sin datos de usuario, o que esté vacío).";
+    }
+    return entries.map(e => `${e.concept || "(sin concepto)"}\n${htmlToText(e.definitionRaw)}`).join("\n\n");
+  }
+
+  // ---------- Consultas/Elecciones: opciones ----------
+  function choiceToBlocks(options) {
+    if (!options || options.length === 0) {
+      return [{ type: "paragraph", text: "No se han encontrado opciones para esta consulta." }];
+    }
+    return options.map(o => ({ type: "paragraph", text: "- " + o }));
+  }
+  function choiceToPlainText(options) {
+    if (!options || options.length === 0) return "No se han encontrado opciones para esta consulta.";
+    return options.map(o => "- " + o).join("\n");
+  }
+
+  const api = {
+    htmlToText, extractPluginFileRefs, quizToBlocks, quizToPlainText, qtypeLabel,
+    forumToBlocks, forumToPlainText, glossaryToBlocks, glossaryToPlainText,
+    choiceToBlocks, choiceToPlainText,
+  };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else global.MBZHtml = api;
+})(typeof window !== "undefined" ? window : globalThis);
+
+  </script>
+  <script>
+/*!
+ * mbz-parser.js — Interpreta un archivo .mbz (backup de curso de Moodle) ya
+ * descomprimido/desempaquetado y construye un árbol navegable: curso →
+ * secciones → actividades, con sus archivos adjuntos resueltos.
+ *
+ * Basado en el formato "moodle2" de backup de Moodle:
+ *   - moodle_backup.xml   → índice de secciones y actividades (contents/*)
+ *   - course/course.xml   → nombre y resumen del curso
+ *   - sections/section_N/section.xml → nombre/resumen real de cada sección
+ *   - activities/<mod>_<id>/<mod>.xml → datos propios de cada actividad
+ *   - activities/<mod>_<id>/inforef.xml → qué ficheros (por id) usa la actividad
+ *   - files.xml           → catálogo de todos los ficheros del backup
+ *   - files/<hash[0:2]>/<hash> → contenido real de cada fichero, por su sha1
+ */
+(function (global) {
+  "use strict";
+
+  const TYPE_INFO = {
+    resource:      { icon: "📄", label: "Archivo" },
+    folder:        { icon: "📁", label: "Carpeta" },
+    url:           { icon: "🔗", label: "Enlace URL" },
+    page:          { icon: "📃", label: "Página" },
+    label:         { icon: "🏷️", label: "Etiqueta / texto" },
+    book:          { icon: "📚", label: "Libro" },
+    forum:         { icon: "💬", label: "Foro" },
+    hsuforum:      { icon: "💬", label: "Foro avanzado" },
+    assign:        { icon: "📝", label: "Tarea" },
+    assignment:    { icon: "📝", label: "Tarea (antigua)" },
+    quiz:          { icon: "❓", label: "Cuestionario" },
+    choice:        { icon: "🗳️", label: "Consulta" },
+    feedback:      { icon: "📊", label: "Encuesta feedback" },
+    survey:        { icon: "📋", label: "Encuesta" },
+    glossary:      { icon: "📖", label: "Glosario" },
+    wiki:          { icon: "🌐", label: "Wiki" },
+    lti:           { icon: "🔌", label: "Herramienta externa (LTI)" },
+    workshop:      { icon: "🛠️", label: "Taller" },
+    scorm:         { icon: "📦", label: "Paquete SCORM" },
+    lesson:        { icon: "📘", label: "Lección" },
+    chat:          { icon: "💭", label: "Chat" },
+    data:          { icon: "🗄️", label: "Base de datos" },
+    h5pactivity:   { icon: "🎮", label: "H5P" },
+    questionnaire: { icon: "📋", label: "Cuestionario (encuesta)" },
+    bigbluebuttonbn: { icon: "🎥", label: "Videoconferencia" },
+    attendance:    { icon: "✅", label: "Asistencia" },
+  };
+  function typeInfo(modname) {
+    return TYPE_INFO[modname] || { icon: "❔", label: modname };
+  }
+
+  function directChild(el, tag) {
+    if (!el) return null;
+    const kids = el.childNodes || [];
+    for (let i = 0; i < kids.length; i++) {
+      const k = kids[i];
+      if (k.nodeType === 1 && k.tagName === tag) return k;
+    }
+    return null;
+  }
+  function directChildText(el, tag, fallback) {
+    const c = directChild(el, tag);
+    return c ? (c.textContent || "") : (fallback !== undefined ? fallback : "");
+  }
+  function children(el, tag) {
+    if (!el) return [];
+    const out = [];
+    const kids = el.childNodes || [];
+    for (let i = 0; i < kids.length; i++) {
+      if (kids[i].nodeType === 1 && kids[i].tagName === tag) out.push(kids[i]);
+    }
+    return out;
+  }
+
+  const EMPTY_SHA1 = "da39a3ee5e6b4b0d3255bfef95601890afd80709";
+
+  function normalizePath(p) {
+    return p.replace(/^\.\//, "").replace(/^\/+/, "");
+  }
+
+  /**
+   * Fase 1 (pesada, sin DOM): descomprime GZIP y desempaqueta TAR.
+   * Se ejecuta normalmente dentro de un Web Worker para no bloquear la interfaz.
+   * @param {Uint8Array} mbzBytes
+   * @param {(info:object)=>void} [onProgress]
+   * @returns {Map<string,Uint8Array>} mapa ruta→contenido
+   */
+  function unpackMbz(mbzBytes, onProgress) {
+    const report = (stage, extra) => { if (onProgress) onProgress(Object.assign({ stage }, extra || {})); };
+
+    report("descomprimiendo");
+    let tarBytes;
+    try {
+      tarBytes = MBZInflate.gunzip(mbzBytes);
+    } catch (e) {
+      throw new Error("No se ha podido descomprimir el archivo: " + e.message);
+    }
+
+    report("desempaquetando");
+    let entries;
+    try {
+      entries = MBZTar.untar(tarBytes);
+    } catch (e) {
+      throw new Error("No se ha podido leer la estructura interna del archivo: " + e.message);
+    }
+
+    const fileMap = new Map();
+    for (const e of entries) {
+      if (e.type === "file") fileMap.set(normalizePath(e.name), e.data);
+    }
+    if (fileMap.size === 0) {
+      throw new Error("El archivo se ha descomprimido pero no contiene ningún fichero. ¿Seguro que es un .mbz válido?");
+    }
+    return fileMap;
+  }
+
+  /**
+   * Fase 2 (necesita DOMParser, por eso vive en el hilo principal): interpreta
+   * todo el XML del backup ya desempaquetado y construye el árbol de curso.
+   * @param {Map<string,Uint8Array>} fileMap  el que devuelve unpackMbz()
+   * @param {(info:object)=>void} [onProgress]
+   * @returns {{course:object, warnings:string[], unlistedFiles:object[], fileMap:Map}}
+   */
+  function interpretFileMap(fileMap, onProgress) {
+    const report = (stage, extra) => { if (onProgress) onProgress(Object.assign({ stage }, extra || {})); };
+    const warnings = [];
+
+    report("interpretando-xml", { total: fileMap.size });
+    const decoder = new TextDecoder("utf-8");
+    function getXmlDoc(path) {
+      const data = fileMap.get(normalizePath(path));
+      if (!data) return null;
+      let text;
+      try { text = decoder.decode(data).normalize("NFC"); }
+      catch (e) { warnings.push(`No se pudo leer ${path} como texto UTF-8.`); return null; }
+      try {
+        const doc = new DOMParser().parseFromString(text, "text/xml");
+        const errs = doc.getElementsByTagName("parsererror");
+        if (errs && errs.length) { warnings.push(`${path} contiene XML mal formado; se omite.`); return null; }
+        return doc;
+      } catch (e) {
+        warnings.push(`No se pudo interpretar ${path}: ${e.message}`);
+        return null;
+      }
+    }
+
+    // ---------- files.xml: catálogo de todos los ficheros ----------
+    const filesById = new Map(); // id -> { contenthash, component, filearea, itemid, filepath, filename, filesize, mimetype, physicalPath, existsInArchive }
+    const filesDoc = getXmlDoc("files.xml");
+    if (filesDoc) {
+      const fileEls = filesDoc.documentElement ? children(filesDoc.documentElement, "file") : [];
+      for (const fEl of fileEls) {
+        const id = fEl.getAttribute ? fEl.getAttribute("id") : null;
+        const filename = directChildText(fEl, "filename");
+        const filesize = parseInt(directChildText(fEl, "filesize", "0"), 10) || 0;
+        const contenthash = directChildText(fEl, "contenthash");
+        if (!filename || filename === "." || (filesize === 0 && contenthash === EMPTY_SHA1)) {
+          continue; // marcador de directorio o entrada vacía, no es un archivo real
+        }
+        const physicalPath = contenthash && contenthash.length >= 2
+          ? `files/${contenthash.slice(0, 2)}/${contenthash}` : null;
+        filesById.set(id, {
+          id,
+          filename,
+          filesize,
+          contenthash,
+          component: directChildText(fEl, "component"),
+          filearea: directChildText(fEl, "filearea"),
+          itemid: directChildText(fEl, "itemid"),
+          filepath: directChildText(fEl, "filepath", "/"),
+          mimetype: directChildText(fEl, "mimetype"),
+          physicalPath,
+          existsInArchive: !!(physicalPath && fileMap.has(physicalPath)),
+        });
+      }
+    } else {
+      warnings.push("No se ha encontrado files.xml: no se podrán recuperar los archivos adjuntos, solo la estructura de texto.");
+    }
+
+    // ---------- course/course.xml ----------
+    let courseName = "Curso sin nombre";
+    let courseSummary = "";
+    const courseDoc = getXmlDoc("course/course.xml");
+    if (courseDoc && courseDoc.documentElement) {
+      courseName = directChildText(courseDoc.documentElement, "fullname") || courseName;
+      courseSummary = directChildText(courseDoc.documentElement, "summary", "");
+    } else {
+      warnings.push("No se ha encontrado course/course.xml: se usará un nombre de curso genérico.");
+    }
+
+    // ---------- moodle_backup.xml: índice de secciones/actividades ----------
+    const backupDoc = getXmlDoc("moodle_backup.xml");
+    if (!backupDoc || !backupDoc.documentElement) {
+      throw new Error("No se ha encontrado moodle_backup.xml. Este archivo no parece un backup de Moodle (.mbz) válido.");
+    }
+    const contentsEls = backupDoc.documentElement.getElementsByTagName("contents");
+    const contentsEl = contentsEls && contentsEls.length ? contentsEls[0] : null;
+    if (!contentsEl) {
+      throw new Error("moodle_backup.xml no tiene la sección <contents> esperada. El backup podría ser de un formato no soportado (¿Moodle 1.9?).");
+    }
+
+    const sectionStructs = contentsEl.getElementsByTagName("sections").length
+      ? children(contentsEl.getElementsByTagName("sections")[0], "section") : [];
+    const activityStructs = contentsEl.getElementsByTagName("activities").length
+      ? children(contentsEl.getElementsByTagName("activities")[0], "activity") : [];
+
+    const usedFileIds = new Set();
+
+    // ---------- questions.xml: banco de preguntas (para cuestionarios) ----------
+    const questionsById = new Map(); // id -> { name, questiontextRaw, qtype, answers:[{textRaw, fraction}] }
+    const questionsDoc = getXmlDoc("questions.xml");
+    if (questionsDoc && questionsDoc.documentElement) {
+      const categoryEls = questionsDoc.documentElement.getElementsByTagName("question_category");
+      for (let c = 0; c < categoryEls.length; c++) {
+        const questionsEl = directChild(categoryEls[c], "questions");
+        const qEls = questionsEl ? children(questionsEl, "question") : [];
+        for (const qEl of qEls) {
+          const id = qEl.getAttribute ? qEl.getAttribute("id") : null;
+          if (!id) continue;
+          const answerEls = qEl.getElementsByTagName("answer");
+          const answers = [];
+          for (let i = 0; i < answerEls.length; i++) {
+            const aEl = answerEls[i];
+            answers.push({
+              textRaw: directChildText(aEl, "answertext"),
+              fraction: parseFloat(directChildText(aEl, "fraction", "0")) || 0,
+            });
+          }
+          questionsById.set(id, {
+            name: directChildText(qEl, "name"),
+            questiontextRaw: directChildText(qEl, "questiontext"),
+            qtype: directChildText(qEl, "qtype"),
+            answers,
+          });
+        }
+      }
+    }
+
+    function resolveQuizQuestions(dir, modEl) {
+      const instancesEl = modEl.getElementsByTagName("question_instances")[0];
+      const instanceEls = instancesEl ? children(instancesEl, "question_instance") : [];
+      let ids = [];
+      if (instanceEls.length) {
+        ids = instanceEls
+          .map(ie => directChildText(ie, "questionid") || directChildText(ie, "question"))
+          .filter(Boolean);
+      } else {
+        // Formato antiguo de respaldo: lista simple separada por comas en <questions>
+        const flat = directChildText(modEl, "questions", "");
+        if (flat) ids = flat.split(",").map(s => s.trim()).filter(s => s && s !== "0");
+      }
+      const resolved = [];
+      let unresolved = 0;
+      for (const id of ids) {
+        const q = questionsById.get(id);
+        if (q) resolved.push(q);
+        else unresolved++;
+      }
+      return { questions: resolved, unresolved };
+    }
+
+    // ---------- construye cada actividad ----------
+    function extractActivityBody(modname, modEl) {
+      // Campos comunes a casi todas las actividades de Moodle
+      const name = directChildText(modEl, "name");
+      const introRaw = directChildText(modEl, "intro");
+      const result = { name, introRaw, externalUrl: null, contentRaw: null, chapters: null, quiz: null, forumType: null, discussions: null, entries: null, options: null };
+
+      if (modname === "url") {
+        result.externalUrl = directChildText(modEl, "externalurl");
+      } else if (modname === "page") {
+        result.contentRaw = directChildText(modEl, "content");
+      } else if (modname === "label") {
+        // En "label" el propio intro ES el contenido; no lo dupliquemos.
+        result.contentRaw = introRaw;
+        result.introRaw = "";
+      } else if (modname === "book") {
+        const chaptersEl = modEl.getElementsByTagName("chapters")[0];
+        const chapterEls = chaptersEl ? children(chaptersEl, "chapter") : [];
+        result.chapters = chapterEls
+          .map(ch => ({
+            title: directChildText(ch, "title"),
+            contentRaw: directChildText(ch, "content"),
+            pagenum: parseInt(directChildText(ch, "pagenum", "0"), 10) || 0,
+          }))
+          .sort((a, b) => a.pagenum - b.pagenum);
+      } else if (modname === "quiz") {
+        result.quiz = resolveQuizQuestions(null, modEl);
+      } else if (modname === "forum") {
+        const discussionsEl = modEl.getElementsByTagName("discussions")[0];
+        const discussionEls = discussionsEl ? children(discussionsEl, "discussion") : [];
+        result.forumType = directChildText(modEl, "type");
+        result.discussions = discussionEls.map(dEl => {
+          const postsEl = dEl.getElementsByTagName("posts")[0];
+          const postEls = postsEl ? children(postsEl, "post") : [];
+          const posts = postEls
+            .map(pEl => ({
+              subject: directChildText(pEl, "subject"),
+              messageRaw: directChildText(pEl, "message"),
+              parent: parseInt(directChildText(pEl, "parent", "0"), 10) || 0,
+              created: parseInt(directChildText(pEl, "created", "0"), 10) || 0,
+            }))
+            .sort((a, b) => a.created - b.created);
+          return { name: directChildText(dEl, "name"), posts };
+        });
+      } else if (modname === "glossary") {
+        const entriesEl = modEl.getElementsByTagName("entries")[0];
+        const entryEls = entriesEl ? children(entriesEl, "entry") : [];
+        result.entries = entryEls.map(eEl => ({
+          concept: directChildText(eEl, "concept"),
+          definitionRaw: directChildText(eEl, "definition"),
+        }));
+      } else if (modname === "choice") {
+        const optionsEl = modEl.getElementsByTagName("options")[0];
+        const optionEls = optionsEl ? children(optionsEl, "option") : [];
+        result.options = optionEls.map(oEl => directChildText(oEl, "text")).filter(Boolean);
+      }
+      return result;
+    }
+
+    function resolveActivityFiles(dir) {
+      const inforefDoc = getXmlDoc(`${dir}/inforef.xml`);
+      const files = [];
+      if (inforefDoc && inforefDoc.documentElement) {
+        const filerefEls = inforefDoc.documentElement.getElementsByTagName("fileref");
+        const fileIdEls = filerefEls.length ? filerefEls[0].getElementsByTagName("file") : [];
+        for (let i = 0; i < fileIdEls.length; i++) {
+          const idEl = directChild(fileIdEls[i], "id");
+          const id = idEl ? idEl.textContent : null;
+          if (!id) continue;
+          usedFileIds.add(id);
+          const meta = filesById.get(id);
+          if (meta) files.push(meta);
+        }
+      }
+      return files;
+    }
+
+    const activities = activityStructs.map(a => {
+      const moduleid = directChildText(a, "moduleid");
+      const sectionid = directChildText(a, "sectionid");
+      const modulename = directChildText(a, "modulename");
+      const structTitle = directChildText(a, "title");
+      const dir = directChildText(a, "directory");
+      const info = typeInfo(modulename);
+
+      const modDoc = getXmlDoc(`${dir}/${modulename}.xml`);
+      let body = { name: structTitle, introRaw: "", externalUrl: null, contentRaw: null, chapters: null, quiz: null, forumType: null, discussions: null, entries: null, options: null };
+      let supported = false;
+      if (modDoc && modDoc.documentElement) {
+        const modEl = modDoc.documentElement.getElementsByTagName(modulename)[0];
+        if (modEl) {
+          body = extractActivityBody(modulename, modEl);
+          supported = true;
+        } else {
+          warnings.push(`No se ha podido leer el contenido de "${structTitle}" (${modulename}).`);
+        }
+      } else {
+        warnings.push(`Falta ${dir}/${modulename}.xml para la actividad "${structTitle}".`);
+      }
+
+      const files = resolveActivityFiles(dir);
+      if (modulename === "quiz" && body.quiz && body.quiz.unresolved > 0) {
+        warnings.push(`"${structTitle}": ${body.quiz.unresolved} pregunta(s) no se han podido resolver contra el banco de preguntas.`);
+      }
+
+      let typeLabel = info.label;
+      if (modulename === "forum" && body.forumType === "news") typeLabel = "Foro de anuncios";
+
+      return {
+        moduleid, sectionid, modulename,
+        title: body.name || structTitle || `(${info.label} sin título)`,
+        icon: info.icon, typeLabel,
+        intro: body.introRaw || "",
+        content: body.contentRaw || "",
+        externalUrl: body.externalUrl,
+        chapters: body.chapters,
+        quiz: body.quiz,
+        discussions: body.discussions,
+        entries: body.entries,
+        options: body.options,
+        files, supported,
+      };
+    });
+
+    const activitiesBySection = new Map();
+    for (const act of activities) {
+      if (!activitiesBySection.has(act.sectionid)) activitiesBySection.set(act.sectionid, []);
+      activitiesBySection.get(act.sectionid).push(act);
+    }
+
+    const sections = sectionStructs.map((s, idx) => {
+      const sectionid = directChildText(s, "sectionid");
+      const structTitle = directChildText(s, "title");
+      const dir = directChildText(s, "directory");
+      const secDoc = getXmlDoc(`${dir}/section.xml`);
+      let name = structTitle;
+      let summary = "";
+      if (secDoc && secDoc.documentElement) {
+        const realName = directChildText(secDoc.documentElement, "name");
+        if (realName) name = realName;
+        summary = directChildText(secDoc.documentElement, "summary", "");
+      }
+      // Moodle usa "0" o el número de tema como marcador de "sin nombre propio"
+      if (!name || /^\d+$/.test(name.trim())) {
+        name = `Sección ${idx + 1}`;
+      }
+      return {
+        sectionid, title: name, summary,
+        activities: activitiesBySection.get(sectionid) || [],
+      };
+    });
+
+    // ---------- ficheros de files.xml no referenciados por ninguna actividad ----------
+    const unlistedFiles = [];
+    for (const [id, meta] of filesById) {
+      if (!usedFileIds.has(id)) unlistedFiles.push(meta);
+    }
+
+    report("listo");
+
+    return {
+      course: { name: courseName, summary: courseSummary, sections },
+      unlistedFiles,
+      warnings,
+      fileMap,
+    };
+  }
+
+  /** Conveniencia: encadena unpackMbz + interpretFileMap. Usado en pruebas y
+   * en cualquier contexto donde no haga falta repartir el trabajo en un Worker. */
+  function parseMbz(mbzBytes, onProgress) {
+    const fileMap = unpackMbz(mbzBytes, onProgress);
+    return interpretFileMap(fileMap, onProgress);
+  }
+
+  const api = { parseMbz, unpackMbz, interpretFileMap, typeInfo };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else global.MBZParser = api;
+})(typeof window !== "undefined" ? window : globalThis);
+
+  </script>
+  <script>
+/*!
+ * exporter.js — A partir del árbol de curso ya interpretado (mbz-parser.js) y
+ * la selección del profesor en la interfaz, genera el paquete final: un ZIP
+ * con un índice en Markdown, el texto de páginas/etiquetas/libros como PDF
+ * (o .txt), los archivos originales adjuntos, y accesos directos .url para
+ * los enlaces externos.
+ */
+(function (global) {
+  "use strict";
+
+  function slugFolder(name, index) {
+    const clean = (name || "sin-titulo")
+      .replace(/[\\/:*?"<>|]/g, "-")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 80);
+    const n = String(index + 1).padStart(2, "0");
+    return `${n}_${clean}`;
+  }
+
+  function slugName(name) {
+    return (name || "sin-titulo")
+      .replace(/[\\/:*?"<>|]/g, "-")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 80) || "sin-titulo";
+  }
+
+  function makeUrlShortcut(url) {
+    return `[InternetShortcut]\r\nURL=${url}\r\n`;
+  }
+
+  function activityTextBlocks(act) {
+    // Construye los bloques { type, text } para el PDF/TXT de una actividad,
+    // a partir de su intro + contenido propio (ya convertidos a texto plano).
+    const blocks = [];
+    const intro = MBZHtml.htmlToText(act.intro);
+    if (intro) { blocks.push({ type: "paragraph", text: intro }); blocks.push({ type: "spacer" }); }
+
+    if (act.modulename === "url" && act.externalUrl) {
+      blocks.push({ type: "heading", text: "Enlace" });
+      blocks.push({ type: "paragraph", text: act.externalUrl });
+    } else if (act.modulename === "quiz") {
+      blocks.push(...MBZHtml.quizToBlocks(act.quiz));
+    } else if (act.modulename === "forum") {
+      blocks.push(...MBZHtml.forumToBlocks(act.discussions));
+    } else if (act.modulename === "glossary") {
+      blocks.push(...MBZHtml.glossaryToBlocks(act.entries));
+    } else if (act.modulename === "choice") {
+      blocks.push({ type: "heading", text: "Opciones" });
+      blocks.push(...MBZHtml.choiceToBlocks(act.options));
+    } else if (act.chapters && act.chapters.length) {
+      for (const ch of act.chapters) {
+        blocks.push({ type: "heading", text: ch.title || "Capítulo" });
+        const chText = MBZHtml.htmlToText(ch.contentRaw);
+        if (chText) blocks.push({ type: "paragraph", text: chText });
+        blocks.push({ type: "spacer" });
+      }
+    } else if (act.content) {
+      const contentText = MBZHtml.htmlToText(act.content);
+      if (contentText) blocks.push({ type: "paragraph", text: contentText });
+    }
+
+    if (act.files && act.files.length) {
+      blocks.push({ type: "spacer" });
+      blocks.push({ type: "heading", text: "Archivos incluidos en esta carpeta" });
+      for (const f of act.files) blocks.push({ type: "paragraph", text: "• " + f.filename });
+    }
+    if (!act.supported) {
+      blocks.push({ type: "spacer" });
+      blocks.push({ type: "paragraph", text: `(Actividad de tipo "${act.typeLabel}": solo se ha podido extraer esta descripción básica.)` });
+    }
+    return blocks;
+  }
+
+  function activityPlainText(act) {
+    const parts = [];
+    const intro = MBZHtml.htmlToText(act.intro);
+    if (intro) parts.push(intro);
+    if (act.modulename === "url" && act.externalUrl) {
+      parts.push("Enlace: " + act.externalUrl);
+    } else if (act.modulename === "quiz") {
+      parts.push(MBZHtml.quizToPlainText(act.quiz));
+    } else if (act.modulename === "forum") {
+      parts.push(MBZHtml.forumToPlainText(act.discussions));
+    } else if (act.modulename === "glossary") {
+      parts.push(MBZHtml.glossaryToPlainText(act.entries));
+    } else if (act.modulename === "choice") {
+      parts.push("Opciones:\n" + MBZHtml.choiceToPlainText(act.options));
+    } else if (act.chapters && act.chapters.length) {
+      for (const ch of act.chapters) {
+        parts.push("## " + (ch.title || "Capítulo"));
+        const t = MBZHtml.htmlToText(ch.contentRaw);
+        if (t) parts.push(t);
+      }
+    } else if (act.content) {
+      const t = MBZHtml.htmlToText(act.content);
+      if (t) parts.push(t);
+    }
+    if (act.files && act.files.length) {
+      parts.push("Archivos incluidos en esta carpeta:");
+      for (const f of act.files) parts.push("• " + f.filename);
+    }
+    return parts.join("\n\n");
+  }
+
+  function escapeHtml(str) {
+    return String(str == null ? "" : str)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  // Codifica una ruta relativa (con posibles espacios/acentos) para usarla en un href,
+  // preservando las barras "/" como separador de carpetas.
+  function encodeHref(relPath) {
+    return relPath.split("/").map(encodeURIComponent).join("/");
+  }
+
+  /**
+   * Genera un índice HTML navegable y autocontenido (mismo árbol que 00_Indice.md,
+   * pero con enlaces relativos que funcionan al abrir el archivo directamente desde
+   * la carpeta ya descomprimida — clic en cada actividad para abrir su PDF/archivo,
+   * o el enlace externo en el caso de las URL).
+   */
+  function buildHtmlIndex(course, sectionManifests, unlistedManifest) {
+    const esc = escapeHtml;
+    let body = `<h1>${esc(course.name)}</h1>\n`;
+    const summary = course.summary ? MBZHtml.htmlToText(course.summary) : "";
+    if (summary) body += `<p class="summary">${esc(summary)}</p>\n`;
+
+    for (const sm of sectionManifests) {
+      body += `<section>\n<h2>${esc(sm.title)}</h2>\n`;
+      if (sm.summary) body += `<p class="summary">${esc(sm.summary)}</p>\n`;
+      body += `<ul class="acts">\n`;
+      for (const am of sm.activities) {
+        body += `  <li><span class="stamp">${esc(am.typeLabel)}</span> <span class="title">${esc(am.title)}</span>\n`;
+        const links = [];
+        if (am.externalUrl) {
+          links.push(`<a href="${esc(am.externalUrl)}" target="_blank" rel="noopener">🔗 abrir enlace</a>`);
+        }
+        if (am.textFileRelPath) {
+          links.push(`<a href="${encodeHref(am.textFileRelPath)}">📄 ${esc(am.textFileRelPath.split("/").pop())}</a>`);
+        }
+        for (const f of am.originalFileRelPaths) {
+          links.push(`<a href="${encodeHref(f)}">📎 ${esc(f.split("/").pop())}</a>`);
+        }
+        if (links.length) body += `    <div class="links">${links.join(" · ")}</div>\n`;
+        body += `  </li>\n`;
+      }
+      body += `</ul>\n</section>\n`;
+    }
+
+    if (unlistedManifest && unlistedManifest.length) {
+      body += `<section>\n<h2>Otros archivos del curso</h2>\n<ul class="acts">\n`;
+      for (const f of unlistedManifest) {
+        body += `  <li><span class="title">${esc(f.name)}</span> <div class="links"><a href="${encodeHref(f.relPath)}">📎 abrir</a></div></li>\n`;
+      }
+      body += `</ul>\n</section>\n`;
+    }
+
+    return `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${esc(course.name)} — Índice</title>
+<style>
+  :root { --bg:#0b0d10; --fg:#f2f2f0; --mid:#9a9d9f; --accent:#ffb648; --border:#2a2d30; }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 820px; margin: 0 auto; padding: 32px 20px 80px; line-height: 1.5; }
+  h1 { font-size: 1.5rem; margin-bottom: 4px; }
+  h2 { font-size: 1.1rem; border-top: 1px dashed var(--border); padding-top: 18px; margin-top: 24px; }
+  p.summary { color: var(--mid); font-size: 0.92rem; }
+  ul.acts { list-style: none; padding: 0; margin: 10px 0 0; }
+  ul.acts li { padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .stamp { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--mid); border: 1px solid #444; border-radius: 3px; padding: 2px 6px; margin-right: 6px; }
+  .title { font-weight: 600; }
+  .links { margin-top: 4px; font-size: 0.88rem; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  footer { color: var(--mid); font-size: 0.78rem; margin-top: 40px; text-align: center; }
+</style>
+</head>
+<body>
+${body}
+<footer>Índice generado automáticamente con MoodleExtractor a partir del backup de Moodle.</footer>
+</body>
+</html>
+`;
+  }
+
+  /**
+   * @param {object} course        árbol devuelto por MBZParser.parseMbz(...).course
+   * @param {Map}    fileMap       mapa ruta→bytes devuelto por parseMbz
+   * @param {object} selection     { sections: { [sectionid]: boolean }, activities: { [moduleid]: boolean } }
+   * @param {object} options       { textFormat: "pdf"|"txt", includeOriginalFiles: bool, includeIndex: bool }
+   * @param {(info)=>void} [onProgress]
+   * @param {object[]} [unlistedFiles] archivos de files.xml no ligados a ninguna actividad,
+   *   que el profesor haya decidido incluir igualmente (van a una carpeta aparte)
+   * @returns {Uint8Array} el ZIP final, listo para descargar
+   */
+  function buildExportZip(course, fileMap, selection, options, onProgress, unlistedFiles) {
+    const opts = Object.assign({ textFormat: "pdf", includeOriginalFiles: true, includeIndex: true, singleCoursePdf: false }, options || {});
+    const report = (n, total) => { if (onProgress) onProgress({ stage: "empaquetando", n, total }); };
+
+    const rootName = (course.name || "Curso").replace(/[\\/:*?"<>|]/g, "-").trim() || "Curso";
+    const zipEntries = [];
+    const indexLines = [`# ${course.name}`, ""];
+    if (course.summary) {
+      const s = MBZHtml.htmlToText(course.summary);
+      if (s) { indexLines.push(s, ""); }
+    }
+    indexLines.push("Índice generado automáticamente con MoodleExtractor a partir del backup de Moodle.", "");
+
+    const sectionManifests = []; // para el índice HTML — mismo recorrido, sin duplicar lógica
+
+    let totalActs = 0, doneActs = 0;
+    for (const sec of course.sections) {
+      if (selection.sections && selection.sections[sec.sectionid] === false) continue;
+      for (const act of sec.activities) {
+        if (selection.activities && selection.activities[act.moduleid] === false) continue;
+        totalActs++;
+      }
+    }
+
+    course.sections.forEach((sec, secIdx) => {
+      if (selection.sections && selection.sections[sec.sectionid] === false) return;
+      const includedActs = sec.activities.filter(a => !(selection.activities && selection.activities[a.moduleid] === false));
+      if (includedActs.length === 0) return;
+
+      const sectionFolder = slugFolder(sec.title, secIdx);
+      indexLines.push(`## ${sec.title}`, "");
+      const sectionSummaryText = sec.summary ? MBZHtml.htmlToText(sec.summary) : "";
+      if (sectionSummaryText) indexLines.push(sectionSummaryText, "");
+
+      const sectionManifest = { title: sec.title, summary: sectionSummaryText, activities: [] };
+
+      includedActs.forEach((act, actIdx) => {
+        const actFolder = `${sectionFolder}/${slugFolder(act.title, actIdx)}`;
+        const indexEntryPrefix = `- **[${act.typeLabel}]** ${act.title}`;
+        const actManifest = { title: act.title, typeLabel: act.typeLabel, externalUrl: null, textFileRelPath: null, originalFileRelPaths: [] };
+
+        if (act.modulename === "url" && act.externalUrl) {
+          zipEntries.push({ path: `${actFolder}/enlace.url`, data: new TextEncoder().encode(makeUrlShortcut(act.externalUrl)) });
+          indexLines.push(`${indexEntryPrefix} — [${act.externalUrl}](${act.externalUrl})`);
+          actManifest.externalUrl = act.externalUrl;
+        } else {
+          indexLines.push(indexEntryPrefix);
+        }
+
+        const richModuleNames = ["quiz", "forum", "glossary", "choice"];
+        const hasTextContent = !!(MBZHtml.htmlToText(act.intro) || act.content || (act.chapters && act.chapters.length) || richModuleNames.includes(act.modulename) || !act.supported);
+        if (hasTextContent && act.modulename !== "url") {
+          if (opts.textFormat === "pdf") {
+            const pdfBytes = MBZPdf.createTextPdf(act.title, activityTextBlocks(act));
+            const rel = `${actFolder}/${slugName(act.title)}.pdf`;
+            zipEntries.push({ path: rel, data: pdfBytes });
+            actManifest.textFileRelPath = rel;
+          } else {
+            const txt = activityPlainText(act);
+            const rel = `${actFolder}/${slugName(act.title)}.txt`;
+            zipEntries.push({ path: rel, data: new TextEncoder().encode(txt) });
+            actManifest.textFileRelPath = rel;
+          }
+        }
+
+        if (opts.includeOriginalFiles && act.files && act.files.length) {
+          for (const f of act.files) {
+            if (!f.existsInArchive) continue;
+            const data = fileMap.get(f.physicalPath);
+            if (data) {
+              const rel = `${actFolder}/${f.filename}`;
+              zipEntries.push({ path: rel, data });
+              actManifest.originalFileRelPaths.push(rel);
+            }
+          }
+        }
+
+        sectionManifest.activities.push(actManifest);
+        doneActs++;
+        report(doneActs, totalActs);
+      });
+      indexLines.push("");
+      sectionManifests.push(sectionManifest);
+    });
+
+    const unlistedManifest = [];
+    if (unlistedFiles && unlistedFiles.length) {
+      indexLines.push("## Otros archivos del curso", "", "Archivos presentes en el backup pero no asociados a ninguna actividad de las secciones anteriores (por ejemplo, adjuntos del banco de preguntas):", "");
+      for (const f of unlistedFiles) {
+        if (!f.existsInArchive) continue;
+        const data = fileMap.get(f.physicalPath);
+        if (!data) continue;
+        const rel = `Otros archivos del curso/${f.filename}`;
+        zipEntries.push({ path: rel, data });
+        indexLines.push(`- ${f.filename}`);
+        unlistedManifest.push({ name: f.filename, relPath: rel });
+      }
+      indexLines.push("");
+    }
+
+    if (opts.includeIndex) {
+      zipEntries.unshift({ path: "00_Indice.md", data: new TextEncoder().encode(indexLines.join("\n")) });
+      const htmlIndex = buildHtmlIndex(course, sectionManifests, unlistedManifest);
+      zipEntries.unshift({ path: "Indice.html", data: new TextEncoder().encode(htmlIndex) });
+    }
+
+    if (opts.singleCoursePdf) {
+      const wholePdf = buildCourseWidePdf(course, selection);
+      zipEntries.unshift({ path: `${slugName(course.name || "Curso")} — curso completo.pdf`, data: wholePdf });
+    }
+
+    const finalEntries = zipEntries.map(e => ({ path: `${rootName}/${e.path}`, data: e.data }));
+    return MBZZip.createZip(finalEntries);
+  }
+
+  /**
+   * Genera un único PDF con todo el curso seleccionado: portada, un resumen
+   * de contenidos, y cada actividad en su propia página (misma extracción de
+   * texto que se usa para el PDF individual de cada actividad).
+   * @param {object} course     árbol del curso
+   * @param {object} selection  misma forma que en buildExportZip
+   * @returns {Uint8Array} PDF completo
+   */
+  function buildCourseWidePdf(course, selection) {
+    const blocks = [];
+    if (course.summary) {
+      const s = MBZHtml.htmlToText(course.summary);
+      if (s) { blocks.push({ type: "paragraph", text: s }); blocks.push({ type: "spacer" }); }
+    }
+
+    const includedSections = course.sections
+      .filter(sec => !(selection.sections && selection.sections[sec.sectionid] === false))
+      .map(sec => ({ sec, acts: sec.activities.filter(a => !(selection.activities && selection.activities[a.moduleid] === false)) }))
+      .filter(({ acts }) => acts.length > 0);
+
+    blocks.push({ type: "heading", text: "Contenido de este documento" });
+    for (const { sec, acts } of includedSections) {
+      blocks.push({ type: "paragraph", text: sec.title + ": " + acts.map(a => a.title).join(", ") });
+    }
+
+    for (const { sec, acts } of includedSections) {
+      blocks.push({ type: "pagebreak" });
+      blocks.push({ type: "heading", text: sec.title });
+      const secSummary = sec.summary ? MBZHtml.htmlToText(sec.summary) : "";
+      if (secSummary) blocks.push({ type: "paragraph", text: secSummary });
+      blocks.push({ type: "spacer" });
+
+      acts.forEach((act, i) => {
+        if (i > 0) blocks.push({ type: "pagebreak" });
+        blocks.push({ type: "heading", text: `${act.typeLabel} — ${act.title}` });
+        blocks.push(...activityTextBlocks(act));
+      });
+    }
+
+    return MBZPdf.createTextPdf(course.name || "Curso", blocks);
+  }
+
+  const api = { buildExportZip, buildCourseWidePdf };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else global.MBZExporter = api;
+})(typeof window !== "undefined" ? window : globalThis);
+
+  </script>
+  <script>
+/*!
+ * app.js — Lógica de interfaz de MoodleExtractor: gestiona el estado de la app
+ * (vacío → procesando → cargado/error), delega el trabajo pesado a un Web
+ * Worker, pinta el inventario de curso con checkboxes accesibles, y dispara
+ * la exportación.
+ */
+(function () {
+  "use strict";
+
+  const $ = (sel, root) => (root || document).querySelector(sel);
+  function el(tag, attrs, children) {
+    const node = document.createElement(tag);
+    if (attrs) for (const k in attrs) {
+      if (attrs[k] === null || attrs[k] === undefined) continue;
+      if (k === "class") node.className = attrs[k];
+      else if (k === "html") node.innerHTML = attrs[k];
+      else if (k.startsWith("on") && typeof attrs[k] === "function") node.addEventListener(k.slice(2), attrs[k]);
+      else node.setAttribute(k, attrs[k]);
+    }
+    (children || []).forEach(c => { if (c !== null && c !== undefined) node.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+    return node;
+  }
+  function fmtBytes(n) {
+    if (!n && n !== 0) return "";
+    if (n < 1024) return n + " B";
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
+    return (n / (1024 * 1024)).toFixed(1) + " MB";
+  }
+  function truncate(str, n) {
+    if (!str) return "";
+    return str.length > n ? str.slice(0, n).trim() + "…" : str;
+  }
+  function ordinal(i) { return String(i + 1).padStart(2, "0"); }
+
+  let state = {
+    phase: "empty", // empty | loading | error | loaded
+    error: null,
+    parsed: null,
+    selection: { sections: {}, activities: {} }, // false = excluido; ausente = incluido
+    includeUnlisted: false,
+    exportOpts: { textFormat: "pdf", includeOriginalFiles: true, includeIndex: true, singleCoursePdf: false },
+  };
+
+  // ---------- Web Worker (creado a partir de un <script> embebido, sin archivo aparte) ----------
+  let worker = null;
+  function getWorker() {
+    if (worker) return worker;
+    const src = document.getElementById("mbz-worker-source").textContent;
+    const blob = new Blob([src], { type: "application/javascript" });
+    worker = new Worker(URL.createObjectURL(blob));
+    return worker;
+  }
+
+  function unpackInWorker(bytes) {
+    return new Promise((resolve, reject) => {
+      const w = getWorker();
+      const onMessage = (ev) => {
+        const msg = ev.data;
+        if (msg.type === "progress") {
+          setProgress(msg.stage, msg.extra);
+        } else if (msg.type === "done") {
+          w.removeEventListener("message", onMessage);
+          const fileMap = new Map();
+          for (const item of msg.files) fileMap.set(item.name, new Uint8Array(item.buffer));
+          resolve(fileMap);
+        } else if (msg.type === "error") {
+          w.removeEventListener("message", onMessage);
+          reject(new Error(msg.message));
+        }
+      };
+      w.addEventListener("message", onMessage);
+      w.postMessage({ type: "unpack", buffer: bytes.buffer }, [bytes.buffer]);
+    });
+  }
+
+  async function handleFile(file) {
+    setPhase("loading");
+    setProgress("leyendo");
+    try {
+      const buf = await file.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      const fileMap = await unpackInWorker(bytes);
+      setProgress("interpretando-xml", { total: fileMap.size });
+      await new Promise(r => setTimeout(r, 0));
+      const result = MBZParser.interpretFileMap(fileMap);
+      state.parsed = result;
+      state.selection = { sections: {}, activities: {} };
+      state.includeUnlisted = false;
+      setPhase("loaded");
+      render();
+    } catch (e) {
+      console.error(e);
+      state.error = e.message || String(e);
+      setPhase("error");
+      render();
+    }
+  }
+
+  function setPhase(phase) { state.phase = phase; render(); }
+
+  const PROGRESS_LABELS = {
+    "leyendo": "Leyendo el archivo…",
+    "descomprimiendo": "Descomprimiendo…",
+    "desempaquetando": "Desempaquetando el curso…",
+    "interpretando-xml": "Interpretando la estructura del curso…",
+    "listo": "¡Listo!",
+    "empaquetando": "Generando tu selección…",
+  };
+  function setProgress(stage, extra) {
+    const bar = $("#progress-label");
+    if (bar) {
+      let text = PROGRESS_LABELS[stage] || stage;
+      if (extra && extra.n && extra.total) text += ` (${extra.n}/${extra.total})`;
+      bar.textContent = text;
+    }
+  }
+
+  function isSectionIncluded(sec) { return state.selection.sections[sec.sectionid] !== false; }
+  function isActivityIncluded(act) { return state.selection.activities[act.moduleid] !== false; }
+
+  function setSectionIncluded(sec, included) {
+    state.selection.sections[sec.sectionid] = included;
+    for (const act of sec.activities) state.selection.activities[act.moduleid] = included;
+    render();
+  }
+  function setActivityIncluded(sec, act, included) {
+    state.selection.activities[act.moduleid] = included;
+    const allOut = sec.activities.every(a => !isActivityIncluded(a));
+    if (allOut) state.selection.sections[sec.sectionid] = false;
+    else delete state.selection.sections[sec.sectionid];
+    render();
+  }
+
+  function countSelected() {
+    let n = 0;
+    for (const sec of state.parsed.course.sections) for (const act of sec.activities) if (isActivityIncluded(act)) n++;
+    return n;
+  }
+  function totalActivities() {
+    let n = 0;
+    for (const sec of state.parsed.course.sections) n += sec.activities.length;
+    return n;
+  }
+
+  const app = document.getElementById("app");
+
+  // Conserva el foco al re-renderizar (checkbox recién marcado, etc.) usando
+  // un identificador estable en vez de depender de que el nodo DOM sobreviva.
+  function withFocusPreserved(renderFn) {
+    const active = document.activeElement;
+    const focusKey = active && active.dataset ? active.dataset.focusKey : null;
+    renderFn();
+    if (focusKey) {
+      const restored = app.querySelector(`[data-focus-key="${CSS.escape(focusKey)}"]`);
+      if (restored) restored.focus({ preventScroll: true });
+    }
+  }
+
+  function render() {
+    app.innerHTML = "";
+    if (state.phase === "empty") app.appendChild(renderEmpty());
+    else if (state.phase === "loading") app.appendChild(renderLoading());
+    else if (state.phase === "error") app.appendChild(renderError());
+    else if (state.phase === "loaded") app.appendChild(renderLoaded());
+  }
+
+  function renderEmpty() {
+    const drop = el("button", { type: "button", class: "dropzone", id: "dropzone" }, [
+      el("div", { class: "drop-icon", "aria-hidden": "true" }, ["🎒"]),
+      el("p", { class: "drop-title" }, ["Arrastra aquí tu archivo .mbz"]),
+      el("p", { class: "drop-sub" }, ["o haz clic para seleccionarlo desde tu equipo"]),
+      el("input", { type: "file", id: "file-input", accept: ".mbz,.zip", style: "display:none", tabindex: "-1", "aria-hidden": "true" }),
+    ]);
+    const wrap = el("div", { class: "empty-wrap" }, [
+      drop,
+      el("p", { class: "privacy-note" }, [
+        el("span", { class: "lock", "aria-hidden": "true" }, ["🔒"]),
+        "Todo ocurre en tu navegador: el archivo nunca se envía a ningún servidor.",
+      ]),
+    ]);
+
+    setTimeout(() => {
+      const input = $("#file-input");
+      const dz = $("#dropzone");
+      dz.addEventListener("click", () => input.click());
+      input.addEventListener("change", () => { if (input.files[0]) handleFile(input.files[0]); });
+      ["dragenter", "dragover"].forEach(evt => dz.addEventListener(evt, (e) => { e.preventDefault(); dz.classList.add("drag-over"); }));
+      ["dragleave", "drop"].forEach(evt => dz.addEventListener(evt, (e) => { e.preventDefault(); dz.classList.remove("drag-over"); }));
+      dz.addEventListener("drop", (e) => { const f = e.dataTransfer.files[0]; if (f) handleFile(f); });
+    }, 0);
+
+    return wrap;
+  }
+
+  function renderLoading() {
+    return el("div", { class: "loading-wrap" }, [
+      el("div", { class: "spinner", "aria-hidden": "true" }),
+      el("p", { id: "progress-label", class: "progress-label", role: "status", "aria-live": "polite" }, ["Leyendo el archivo…"]),
+    ]);
+  }
+
+  function renderError() {
+    return el("div", { class: "error-wrap" }, [
+      el("div", { class: "error-icon", "aria-hidden": "true" }, ["⚠️"]),
+      el("p", { class: "error-title" }, ["No se ha podido procesar el archivo"]),
+      el("p", { class: "error-detail", role: "alert" }, [state.error]),
+      el("button", { class: "btn btn-primary", onclick: () => { state.phase = "empty"; state.error = null; render(); } }, ["Volver a intentarlo"]),
+    ]);
+  }
+
+  function renderLoaded() {
+    const { course, warnings, unlistedFiles } = state.parsed;
+    const root = el("div", { class: "loaded-wrap" });
+
+    const totalFiles = course.sections.reduce((n, s) => n + s.activities.reduce((m, a) => m + a.files.length, 0), 0);
+    root.appendChild(el("div", { class: "course-header" }, [
+      el("div", {}, [
+        el("h2", { class: "course-title" }, [course.name]),
+        el("ul", { class: "manifest-stats" }, [
+          el("li", { class: "tabular" }, [`${course.sections.length} sección(es)`]),
+          el("li", { class: "tabular" }, [`${totalActivities()} actividad(es)`]),
+          el("li", { class: "tabular" }, [`${totalFiles} archivo(s)`]),
+        ]),
+      ]),
+      el("button", {
+        class: "btn btn-ghost", onclick: () => {
+          state = { phase: "empty", error: null, parsed: null, selection: { sections: {}, activities: {} }, includeUnlisted: false, exportOpts: state.exportOpts };
+          render();
+        }
+      }, ["Cargar otro archivo"]),
+    ]));
+
+    if (warnings && warnings.length) {
+      root.appendChild(el("details", { class: "warnings" }, [
+        el("summary", {}, [`⚠️ ${warnings.length} aviso(s) durante la lectura`]),
+        el("ul", {}, warnings.map(w => el("li", {}, [w]))),
+      ]));
+    }
+
+    root.appendChild(renderExportBar());
+
+    const tree = el("div", { class: "tree" });
+    course.sections.forEach((sec, i) => tree.appendChild(renderSection(sec, i)));
+    root.appendChild(tree);
+
+    if (unlistedFiles && unlistedFiles.length) root.appendChild(renderUnlisted(unlistedFiles));
+
+    return root;
+  }
+
+  function renderExportBar() {
+    const selCount = countSelected();
+    const totalCount = totalActivities();
+
+    const left = el("div", { class: "export-left" }, [
+      el("div", { class: "field-group", role: "radiogroup", "aria-label": "Formato del texto exportado" }, [
+        el("span", { class: "field-label" }, ["Texto de páginas/etiquetas:"]),
+        el("label", { class: "radio" }, [
+          el("input", { type: "radio", name: "textFormat", checked: state.exportOpts.textFormat === "pdf" ? "checked" : null, onchange: () => { state.exportOpts.textFormat = "pdf"; } }),
+          " PDF",
+        ]),
+        el("label", { class: "radio" }, [
+          el("input", { type: "radio", name: "textFormat", checked: state.exportOpts.textFormat === "txt" ? "checked" : null, onchange: () => { state.exportOpts.textFormat = "txt"; } }),
+          " TXT",
+        ]),
+      ]),
+      el("label", { class: "checkbox" }, [
+        el("input", { type: "checkbox", checked: state.exportOpts.includeOriginalFiles ? "checked" : null, onchange: (e) => { state.exportOpts.includeOriginalFiles = e.target.checked; } }),
+        " Incluir archivos originales adjuntos",
+      ]),
+      el("label", { class: "checkbox" }, [
+        el("input", { type: "checkbox", checked: state.exportOpts.singleCoursePdf ? "checked" : null, onchange: (e) => { state.exportOpts.singleCoursePdf = e.target.checked; } }),
+        " Generar también un PDF único de todo el curso",
+      ]),
+      el("div", { class: "select-actions" }, [
+        el("button", { class: "btn-link", onclick: () => { state.selection = { sections: {}, activities: {} }; render(); } }, ["Seleccionar todo"]),
+        el("button", {
+          class: "btn-link", onclick: () => {
+            const sel = { sections: {}, activities: {} };
+            for (const sec of state.parsed.course.sections) { sel.sections[sec.sectionid] = false; for (const a of sec.activities) sel.activities[a.moduleid] = false; }
+            state.selection = sel; render();
+          }
+        }, ["Deseleccionar todo"]),
+      ]),
+    ]);
+
+    const right = el("div", { class: "export-right" }, [
+      el("button", { class: "btn btn-primary btn-export", disabled: selCount === 0 ? "disabled" : null, onclick: onExportClick },
+        [`⬇ Descargar selección (`, el("span", { class: "tabular" }, [`${selCount}/${totalCount}`]), `) .zip`]),
+    ]);
+
+    return el("div", { class: "export-bar" }, [left, right]);
+  }
+
+  function renderSection(sec, index) {
+    const included = isSectionIncluded(sec);
+    const anyIncluded = sec.activities.some(a => isActivityIncluded(a));
+    const box = el("div", { class: "section" + (included ? "" : anyIncluded ? " section-partial" : " section-excluded") });
+
+    box.appendChild(el("div", { class: "section-header" }, [
+      el("label", { class: "checkbox-row" }, [
+        el("input", {
+          type: "checkbox", checked: included ? "checked" : null,
+          "data-focus-key": `sec-${sec.sectionid}`,
+          onchange: (e) => withFocusPreserved(() => setSectionIncluded(sec, e.target.checked)),
+        }),
+        el("span", { class: "section-index", "aria-hidden": "true" }, [ordinal(index)]),
+        el("h3", { class: "section-title" }, [sec.title]),
+      ]),
+      el("span", { class: "section-count tabular" }, [`${sec.activities.length}`]),
+    ]));
+    if (sec.summary) {
+      const s = MBZHtml.htmlToText(sec.summary);
+      if (s) box.appendChild(el("p", { class: "section-summary" }, [truncate(s, 220)]));
+    }
+
+    const list = el("div", { class: "activity-list" });
+    sec.activities.forEach(act => list.appendChild(renderActivity(sec, act)));
+    box.appendChild(list);
+    return box;
+  }
+
+  function activityPreviewText(act) {
+    if (act.modulename === "url" && act.externalUrl) return act.externalUrl;
+    if (act.modulename === "quiz") {
+      const n = act.quiz && act.quiz.questions ? act.quiz.questions.length : 0;
+      return n ? `${n} pregunta(s): ` + act.quiz.questions.map(q => q.name).join(" · ") : "Cuestionario sin preguntas extraíbles";
+    }
+    if (act.modulename === "forum") {
+      const n = act.discussions ? act.discussions.length : 0;
+      return n ? `${n} debate(s): ` + act.discussions.map(d => d.name).join(" · ") : "Sin mensajes extraíbles en este foro";
+    }
+    if (act.modulename === "glossary") {
+      const n = act.entries ? act.entries.length : 0;
+      return n ? `${n} entrada(s): ` + act.entries.slice(0, 6).map(e => e.concept).join(" · ") : "Sin entradas extraíbles en este glosario";
+    }
+    if (act.modulename === "choice") {
+      return act.options && act.options.length ? "Opciones: " + act.options.join(" · ") : "Sin opciones extraíbles";
+    }
+    if (act.content) return MBZHtml.htmlToText(act.content);
+    if (act.intro) return MBZHtml.htmlToText(act.intro);
+    if (act.chapters && act.chapters.length) return act.chapters.map(c => c.title).join(" · ");
+    return "";
+  }
+  function activityFullText(act) {
+    const parts = [];
+    const intro = MBZHtml.htmlToText(act.intro);
+    if (intro) parts.push(intro);
+    if (act.modulename === "url" && act.externalUrl) parts.push("Enlace: " + act.externalUrl);
+    else if (act.modulename === "quiz") parts.push(MBZHtml.quizToPlainText(act.quiz));
+    else if (act.modulename === "forum") parts.push(MBZHtml.forumToPlainText(act.discussions));
+    else if (act.modulename === "glossary") parts.push(MBZHtml.glossaryToPlainText(act.entries));
+    else if (act.modulename === "choice") parts.push("Opciones:\n" + MBZHtml.choiceToPlainText(act.options));
+    else if (act.chapters && act.chapters.length) {
+      for (const ch of act.chapters) { parts.push("· " + (ch.title || "Capítulo")); const t = MBZHtml.htmlToText(ch.contentRaw); if (t) parts.push(t); }
+    } else if (act.content) { const t = MBZHtml.htmlToText(act.content); if (t) parts.push(t); }
+    return parts.join("\n\n");
+  }
+
+  function renderActivity(sec, act) {
+    const included = isActivityIncluded(act);
+    const row = el("div", { class: "activity" + (included ? "" : " activity-excluded") });
+    const previewId = `preview-${act.moduleid}`;
+
+    row.appendChild(el("div", { class: "activity-head" }, [
+      el("label", { class: "checkbox-row", style: "flex:1 1 auto; min-width:0;" }, [
+        el("input", {
+          type: "checkbox", checked: included ? "checked" : null,
+          "data-focus-key": `act-${act.moduleid}`,
+          onchange: (e) => withFocusPreserved(() => setActivityIncluded(sec, act, e.target.checked)),
+        }),
+        el("span", { "aria-hidden": "true" }, [act.icon]),
+        el("span", { class: "activity-title" }, [act.title]),
+        el("span", { class: "stamp" }, [act.typeLabel]),
+      ]),
+      el("button", {
+        class: "btn-link btn-preview", "aria-expanded": "false", "aria-controls": previewId,
+        onclick: (e) => togglePreview(e.currentTarget, act, previewId),
+      }, ["Ver contenido"]),
+    ]));
+
+    const preview = truncate(activityPreviewText(act), 140);
+    if (preview) row.appendChild(el("p", { class: "activity-preview" }, [preview]));
+
+    if (act.files && act.files.length) {
+      row.appendChild(el("div", { class: "file-chips" }, act.files.map(f =>
+        el("span", { class: "chip" + (f.existsInArchive ? "" : " chip-missing") }, [`📎 ${f.filename} (${fmtBytes(f.filesize)})`])
+      )));
+    }
+    if (!act.supported) {
+      row.appendChild(el("p", { class: "activity-unsupported" }, ["Vista simplificada: no se ha podido leer el contenido completo de este tipo de actividad."]));
+    }
+
+    row.appendChild(el("div", { class: "full-text-wrap", id: previewId }, [
+      el("div", { class: "full-text-inner" }),
+    ]));
+    return row;
+  }
+
+  function togglePreview(btn, act, previewId) {
+    const wrap = document.getElementById(previewId);
+    const inner = wrap.querySelector(".full-text-inner");
+    const isOpen = wrap.classList.contains("open");
+    if (isOpen) {
+      wrap.classList.remove("open");
+      btn.setAttribute("aria-expanded", "false");
+      btn.textContent = "Ver contenido";
+      return;
+    }
+    if (!inner.dataset.filled) {
+      const text = activityFullText(act);
+      inner.appendChild(el("pre", { class: "full-text" }, [text || "(Sin contenido de texto para esta actividad.)"]));
+      inner.dataset.filled = "1";
+    }
+    wrap.classList.add("open");
+    btn.setAttribute("aria-expanded", "true");
+    btn.textContent = "Ocultar";
+  }
+
+  function renderUnlisted(unlistedFiles) {
+    return el("details", { class: "unlisted" }, [
+      el("summary", {}, [`📎 ${unlistedFiles.length} archivo(s) del curso no asociados a ninguna actividad visible`]),
+      el("label", { class: "checkbox" }, [
+        el("input", { type: "checkbox", checked: state.includeUnlisted ? "checked" : null, onchange: (e) => { state.includeUnlisted = e.target.checked; } }),
+        " Incluirlos igualmente en la descarga (carpeta “Otros archivos del curso”)",
+      ]),
+      el("ul", { class: "unlisted-list" }, unlistedFiles.map(f => el("li", {}, [`${f.filename} — ${fmtBytes(f.filesize)} (${f.component || "?"})`]))),
+    ]);
+  }
+
+  // ---------- Exportación ----------
+  async function onExportClick() {
+    const btn = $(".btn-export");
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = "Generando…";
+    try {
+      await new Promise(r => setTimeout(r, 0));
+      const extraUnlisted = state.includeUnlisted ? state.parsed.unlistedFiles : [];
+      const zipBytes = MBZExporter.buildExportZip(
+        state.parsed.course,
+        state.parsed.fileMap,
+        state.selection,
+        state.exportOpts,
+        null,
+        extraUnlisted
+      );
+      const blob = new Blob([zipBytes], { type: "application/zip" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const safeName = (state.parsed.course.name || "curso").replace(/[\\/:*?"<>|]/g, "-").trim() || "curso";
+      a.href = url;
+      a.download = `${safeName}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    } catch (e) {
+      console.error(e);
+      alert("No se ha podido generar la descarga: " + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }
+  }
+
+  // ---------- Tema claro/oscuro ----------
+  function initTheme() {
+    const saved = localStorage.getItem("moodleextractor_theme");
+    if (saved === "light") document.body.classList.add("light");
+    updateThemeColorMeta();
+    const btn = document.getElementById("theme-toggle");
+    if (btn) btn.addEventListener("click", () => {
+      document.body.classList.toggle("light");
+      const isLight = document.body.classList.contains("light");
+      localStorage.setItem("moodleextractor_theme", isLight ? "light" : "dark");
+      updateThemeColorMeta();
+    });
+  }
+  function updateThemeColorMeta() {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) return;
+    const isLight = document.body.classList.contains("light");
+    meta.setAttribute("content", isLight ? "#f3f2ee" : "#0b0d10");
+  }
+
+  initTheme();
+  render();
+})();
+
+  </script>
+</body>
+</html>

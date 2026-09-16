@@ -68,32 +68,55 @@ a { color: var(--accent); }
 .skip-link:focus { top: 12px; }
 
 /* ---------- Cabecera ---------- */
-.topbar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 18px 24px; border-bottom: 1px solid var(--border-subtle);
-  max-width: 760px; margin: 0 auto;
+.site-header {
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border-subtle);
+  position: sticky; top: 0; z-index: 10;
 }
-.brand { display: flex; align-items: center; gap: 12px; }
-.brand-logo { font-size: 1.4rem; }
+.topbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 16px 24px; max-width: 860px; margin: 0 auto;
+}
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.brand-logo { font-size: 1.4rem; flex-shrink: 0; }
 .brand h1 {
   font-size: 1.05rem; margin: 0; font-weight: 800; letter-spacing: -0.01em;
 }
 .brand .tagline { color: var(--mid); font-size: 0.82rem; margin-top: 1px; }
+.header-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.file-status-chip {
+  display: flex; align-items: center; gap: 10px;
+  border: 1px solid var(--border); border-radius: 999px;
+  padding: 5px 8px 5px 14px; font-size: 0.82rem; max-width: 46vw;
+}
+.file-status-chip .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--mid); }
+.file-status-chip .name strong { color: var(--fg); font-weight: 600; }
+.reset-btn {
+  display: flex; align-items: center; gap: 5px; flex-shrink: 0;
+  background: var(--bg); border: 1px solid var(--border); color: var(--mid);
+  border-radius: 999px; padding: 5px 12px 5px 10px; font-size: 0.78rem; font-weight: 600;
+  cursor: pointer; font-family: inherit; touch-action: manipulation;
+  transition: border-color 150ms var(--ease-out), color 150ms var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .reset-btn:hover { border-color: var(--danger); color: var(--danger); }
+}
+.reset-btn:active { transform: scale(0.96); }
 .icon-btn {
   background: none; border: 1px solid var(--border); color: var(--mid);
   border-radius: 8px; width: 36px; height: 36px; cursor: pointer; font-size: 1rem;
   transition: border-color 150ms var(--ease-out), color 150ms var(--ease-out), transform 100ms var(--ease-out);
-  touch-action: manipulation;
+  touch-action: manipulation; flex-shrink: 0;
 }
 @media (hover: hover) and (pointer: fine) {
   .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
 }
 .icon-btn:active { transform: scale(0.93); }
 
-main { max-width: 760px; margin: 0 auto; padding: 28px 24px 80px; }
+main { max-width: 860px; margin: 0 auto; padding: 32px 24px 64px; }
 
 /* ---------- Estado vacío / dropzone ---------- */
-.empty-wrap { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 48px 16px; }
+.empty-wrap { display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 40px 16px 8px; }
 
 .dropzone {
   position: relative;
@@ -122,10 +145,23 @@ main { max-width: 760px; margin: 0 auto; padding: 28px 24px 80px; }
 .privacy-note { color: var(--mid); font-size: 0.82rem; text-align: center; max-width: 420px; }
 .privacy-note .lock { margin-right: 4px; }
 
-.how-it-works { max-width: 560px; margin: 8px auto 0; color: var(--mid); font-size: 0.88rem; }
-.how-it-works h2 { color: var(--fg); font-size: 0.92rem; margin-bottom: 8px; font-weight: 700; }
-.how-it-works ol { padding-left: 20px; margin: 0; }
-.how-it-works li { margin-bottom: 5px; }
+/* Tira de "qué puedes sacar de aquí" — da cuerpo al estado vacío sin abrumar */
+.feature-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 620px; }
+.feature-chip {
+  display: flex; align-items: center; gap: 6px;
+  border: 1px solid var(--border); background: var(--bg-elevated); border-radius: 999px;
+  padding: 6px 14px; font-size: 0.8rem; color: var(--mid);
+}
+.feature-chip .ic { font-size: 0.95rem; }
+
+.how-it-works {
+  max-width: 620px; margin: 12px auto 0; padding-top: 28px;
+  border-top: 1px dashed var(--border); color: var(--mid); font-size: 0.88rem;
+}
+.how-it-works h2 { color: var(--fg); font-size: 0.95rem; margin: 0 0 14px; font-weight: 700; }
+.how-it-works ol { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.how-it-works li { display: flex; gap: 12px; align-items: baseline; }
+.how-it-works .step-index { font-family: var(--font-mono); color: var(--mid); font-size: 0.85rem; flex-shrink: 0; min-width: 1.4em; }
 .how-it-works code { font-family: var(--font-mono); background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; font-size: 0.85em; }
 
 /* ---------- Carga / error ---------- */
@@ -187,7 +223,7 @@ button:focus-visible, input:focus-visible, a:focus-visible, [tabindex]:focus-vis
 .export-bar {
   display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
   background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 14px 18px; margin-bottom: 22px; position: sticky; top: 8px; z-index: 5;
+  padding: 14px 18px; margin-bottom: 22px;
 }
 .export-left { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
 .field-group { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
@@ -261,52 +297,60 @@ button:focus-visible, input:focus-visible, a:focus-visible, [tabindex]:focus-vis
 .unlisted summary { cursor: pointer; touch-action: manipulation; }
 .unlisted-list { color: var(--mid); max-height: 160px; overflow: auto; margin: 8px 0 0; padding-left: 20px; content-visibility: auto; }
 
-footer.site-footer { text-align: center; color: var(--mid); font-size: 0.78rem; padding: 24px 20px; }
+footer.site-footer {
+  margin-top: 40px; background: var(--bg-elevated); border-top: 1px solid var(--border-subtle);
+}
+.footer-inner { max-width: 860px; margin: 0 auto; padding: 28px 24px 32px; text-align: center; }
+.footer-note { color: var(--fg); font-size: 0.9rem; margin: 0 0 14px; }
+.footer-note .ic { margin-right: 4px; }
 footer.site-footer a { color: var(--mid); }
 @media (hover: hover) and (pointer: fine) {
   footer.site-footer a:hover { color: var(--accent); }
 }
-.footer-line { margin: 0 0 6px; }
+.footer-line { margin: 0 0 6px; color: var(--mid); font-size: 0.78rem; }
 .footer-line:last-child { margin-bottom: 0; }
 
 @media (max-width: 640px) {
-  .topbar, main { padding-left: 14px; padding-right: 14px; }
-  .export-bar { position: static; flex-direction: column; align-items: stretch; }
+  .topbar, main, .footer-inner { padding-left: 14px; padding-right: 14px; }
+  .export-bar { flex-direction: column; align-items: stretch; }
   .export-right { display: flex; }
   .btn-export { width: 100%; }
   .activity-list, .section-summary, .activity-preview, .file-chips, .full-text-wrap { margin-left: 18px; }
+  .header-actions { gap: 6px; }
+  .file-status-chip .name { display: none; }
+  .reset-btn span.label { display: none; }
 }
 
 </style>
 </head>
 <body>
   <a href="#main-content" class="skip-link">Saltar al contenido</a>
-  <div class="topbar">
-    <div class="brand">
-      <span class="brand-logo" aria-hidden="true">🎒</span>
-      <div>
-        <h1>MoodleExtractor</h1>
-        <div class="tagline">Explora copias de seguridad de Moodle (.mbz)</div>
+  <header class="site-header">
+    <div class="topbar">
+      <div class="brand">
+        <span class="brand-logo" aria-hidden="true">🎒</span>
+        <div>
+          <h1>MoodleExtractor</h1>
+          <div class="tagline">Explora copias de seguridad de Moodle (.mbz)</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div id="header-file-status"></div>
+        <button class="icon-btn" id="theme-toggle" title="Cambiar tema claro/oscuro" aria-label="Cambiar tema claro/oscuro">◐</button>
       </div>
     </div>
-    <button class="icon-btn" id="theme-toggle" title="Cambiar tema claro/oscuro" aria-label="Cambiar tema claro/oscuro">◐</button>
-  </div>
+  </header>
 
   <main id="main-content">
     <div id="app"></div>
-    <div class="how-it-works" id="how-it-works">
-      <h2>¿Para qué sirve esto?</h2>
-      <ol>
-        <li>Sube el archivo <code>.mbz</code> que te haya pasado el profesor anterior (o el que exportes tú desde "Copia de seguridad" en Moodle).</li>
-        <li>Explora el curso completo por secciones y actividades: páginas, etiquetas, archivos, enlaces, carpetas, libros…</li>
-        <li>Marca lo que te interese y descárgalo en una carpeta ordenada, con el texto convertido a PDF y los archivos originales incluidos.</li>
-      </ol>
-    </div>
   </main>
 
   <footer class="site-footer">
-    <p class="footer-line">Javier Tatay Rubio · <a href="mailto:j.tatayrubio@edu.gva.es">j.tatayrubio@edu.gva.es</a> · <a href="mailto:javitatay@gmail.com">javitatay@gmail.com</a></p>
-    <p class="footer-line"><a href="https://github.com/javitatay" target="_blank" rel="noopener">github.com/javitatay</a> · <a href="https://github.com/javitatay/MoodleExtractor" target="_blank" rel="noopener">código de esta herramienta</a></p>
+    <div class="footer-inner">
+      <p class="footer-note"><span class="ic" aria-hidden="true">🎒</span>Hecho por y para profes que heredan un curso a última hora.</p>
+      <p class="footer-line">Javier Tatay Rubio · <a href="mailto:j.tatayrubio@edu.gva.es">j.tatayrubio@edu.gva.es</a> · <a href="mailto:javitatay@gmail.com">javitatay@gmail.com</a></p>
+      <p class="footer-line"><a href="https://github.com/javitatay" target="_blank" rel="noopener">github.com/javitatay</a> · <a href="https://github.com/javitatay/MoodleExtractor" target="_blank" rel="noopener">código de esta herramienta</a></p>
+    </div>
   </footer>
 
   <script type="text/plain" id="mbz-worker-source">
@@ -2746,12 +2790,34 @@ ${body}
     }
   }
 
+  function resetToEmpty() {
+    state = { phase: "empty", error: null, parsed: null, selection: { sections: {}, activities: {} }, includeUnlisted: false, exportOpts: state.exportOpts };
+    render();
+  }
+
   function render() {
     app.innerHTML = "";
     if (state.phase === "empty") app.appendChild(renderEmpty());
     else if (state.phase === "loading") app.appendChild(renderLoading());
     else if (state.phase === "error") app.appendChild(renderError());
     else if (state.phase === "loaded") app.appendChild(renderLoaded());
+    renderHeaderStatus();
+  }
+
+  // Chip de estado en la cabecera: solo aparece con un curso cargado, y es la
+  // única vía para reiniciar — siempre a mano gracias a la cabecera fija arriba.
+  function renderHeaderStatus() {
+    const host = document.getElementById("header-file-status");
+    if (!host) return;
+    host.innerHTML = "";
+    if (state.phase !== "loaded" || !state.parsed) return;
+    host.appendChild(el("div", { class: "file-status-chip" }, [
+      el("span", { class: "name" }, ["Curso: ", el("strong", {}, [truncate(state.parsed.course.name, 34)])]),
+      el("button", { class: "reset-btn", title: "Cargar otro archivo .mbz", onclick: resetToEmpty }, [
+        el("span", { class: "ic", "aria-hidden": "true" }, ["✕"]),
+        el("span", { class: "label" }, ["Nuevo archivo"]),
+      ]),
+    ]));
   }
 
   function renderEmpty() {
@@ -2766,6 +2832,20 @@ ${body}
       el("p", { class: "privacy-note" }, [
         el("span", { class: "lock", "aria-hidden": "true" }, ["🔒"]),
         "Todo ocurre en tu navegador: el archivo nunca se envía a ningún servidor.",
+      ]),
+      el("div", { class: "feature-row" }, [
+        el("span", { class: "feature-chip" }, [el("span", { class: "ic", "aria-hidden": "true" }, ["📄"]), "Texto a PDF o TXT"]),
+        el("span", { class: "feature-chip" }, [el("span", { class: "ic", "aria-hidden": "true" }, ["❓"]), "Preguntas de examen"]),
+        el("span", { class: "feature-chip" }, [el("span", { class: "ic", "aria-hidden": "true" }, ["🔗"]), "Enlaces y archivos"]),
+        el("span", { class: "feature-chip" }, [el("span", { class: "ic", "aria-hidden": "true" }, ["🌐"]), "Índice navegable"]),
+      ]),
+      el("div", { class: "how-it-works" }, [
+        el("h2", {}, ["¿Para qué sirve esto?"]),
+        el("ol", {}, [
+          el("li", {}, [el("span", { class: "step-index", "aria-hidden": "true" }, ["01"]), el("span", {}, ["Sube el archivo ", el("code", {}, [".mbz"]), " que te haya pasado el profesor anterior (o el que exportes tú desde \"Copia de seguridad\" en Moodle)."])]),
+          el("li", {}, [el("span", { class: "step-index", "aria-hidden": "true" }, ["02"]), el("span", {}, ["Explora el curso completo por secciones y actividades: páginas, etiquetas, archivos, enlaces, carpetas, libros…"])]),
+          el("li", {}, [el("span", { class: "step-index", "aria-hidden": "true" }, ["03"]), el("span", {}, ["Marca lo que te interese y descárgalo en una carpeta ordenada, con el texto convertido a PDF y los archivos originales incluidos."])]),
+        ]),
       ]),
     ]);
 
@@ -2794,7 +2874,7 @@ ${body}
       el("div", { class: "error-icon", "aria-hidden": "true" }, ["⚠️"]),
       el("p", { class: "error-title" }, ["No se ha podido procesar el archivo"]),
       el("p", { class: "error-detail", role: "alert" }, [state.error]),
-      el("button", { class: "btn btn-primary", onclick: () => { state.phase = "empty"; state.error = null; render(); } }, ["Volver a intentarlo"]),
+      el("button", { class: "btn btn-primary", onclick: resetToEmpty }, ["Volver a intentarlo"]),
     ]);
   }
 
@@ -2812,12 +2892,6 @@ ${body}
           el("li", { class: "tabular" }, [`${totalFiles} archivo(s)`]),
         ]),
       ]),
-      el("button", {
-        class: "btn btn-ghost", onclick: () => {
-          state = { phase: "empty", error: null, parsed: null, selection: { sections: {}, activities: {} }, includeUnlisted: false, exportOpts: state.exportOpts };
-          render();
-        }
-      }, ["Cargar otro archivo"]),
     ]));
 
     if (warnings && warnings.length) {

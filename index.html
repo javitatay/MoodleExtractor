@@ -39,7 +39,7 @@ body.light {
   --faint: #9a9d9f;
   --accent: #935b07;
   --accent-fg: #ffffff;
-  --ink: #0f8f68;
+  --ink: #0c7555;
   --border: #dcdcd6;
   --border-subtle: rgba(0,0,0,0.07);
   color-scheme: light;
@@ -82,12 +82,12 @@ a { color: var(--accent); }
 .brand h1 {
   font-size: 1.05rem; margin: 0; font-weight: 800; letter-spacing: -0.01em;
 }
-.brand .tagline { color: var(--mid); font-size: 0.82rem; margin-top: 1px; }
+.brand .tagline { color: var(--mid); font-size: 0.85rem; margin-top: 1px; }
 .header-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .file-status-chip {
   display: flex; align-items: center; gap: 10px;
   border: 1px solid var(--border); border-radius: 999px;
-  padding: 5px 8px 5px 14px; font-size: 0.82rem; max-width: 46vw;
+  padding: 5px 8px 5px 14px; font-size: 0.85rem; max-width: 46vw;
 }
 .file-status-chip .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--mid); }
 .file-status-chip .name strong { color: var(--fg); font-weight: 600; }
@@ -141,8 +141,8 @@ main { max-width: 860px; margin: 0 auto; padding: 32px 24px 64px; }
 .dropzone.drag-over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--bg-elevated)); }
 .drop-icon { font-size: 2.2rem; margin-bottom: 10px; }
 .drop-title { font-size: 1.05rem; font-weight: 700; margin: 0 0 4px; }
-.drop-sub { color: var(--mid); margin: 0; font-size: 0.87rem; }
-.privacy-note { color: var(--mid); font-size: 0.82rem; text-align: center; max-width: 420px; }
+.drop-sub { color: var(--mid); margin: 0; font-size: 0.85rem; }
+.privacy-note { color: var(--mid); font-size: 0.85rem; text-align: center; max-width: 420px; }
 .privacy-note .lock { margin-right: 4px; }
 
 /* Tira de "qué puedes sacar de aquí" — da cuerpo al estado vacío sin abrumar */
@@ -150,13 +150,13 @@ main { max-width: 860px; margin: 0 auto; padding: 32px 24px 64px; }
 .feature-chip {
   display: flex; align-items: center; gap: 6px;
   border: 1px solid var(--border); background: var(--bg-elevated); border-radius: 999px;
-  padding: 6px 14px; font-size: 0.8rem; color: var(--mid);
+  padding: 6px 14px; font-size: 0.78rem; color: var(--mid);
 }
 .feature-chip .ic { font-size: 0.95rem; }
 
 .how-it-works {
   max-width: 620px; margin: 12px auto 0; padding-top: 28px;
-  border-top: 1px dashed var(--border); color: var(--mid); font-size: 0.88rem;
+  border-top: 1px dashed var(--border); color: var(--mid); font-size: 0.85rem;
 }
 .how-it-works h2 { color: var(--fg); font-size: 0.95rem; margin: 0 0 14px; font-weight: 700; }
 .how-it-works ol { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
@@ -175,25 +175,24 @@ main { max-width: 860px; margin: 0 auto; padding: 32px 24px 64px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .progress-label { color: var(--mid); font-family: var(--font-mono); font-size: 0.85rem; }
 .error-icon { font-size: 2rem; }
-.error-title { font-weight: 700; font-size: 1.02rem; margin: 0; }
+.error-title { font-weight: 700; font-size: 1.05rem; margin: 0; }
 .error-detail { color: var(--mid); max-width: 460px; }
 
 /* ---------- Botones ---------- */
 .btn {
-  border-radius: 7px; padding: 9px 16px; font-size: 0.87rem; font-weight: 700;
+  border-radius: 7px; padding: 9px 16px; font-size: 0.85rem; font-weight: 700;
   cursor: pointer; border: 1px solid transparent; font-family: inherit;
-  transition: transform 100ms var(--ease-out), filter 150ms var(--ease-out), border-color 150ms var(--ease-out), color 150ms var(--ease-out);
+  transition: transform 100ms var(--ease-out), filter 150ms var(--ease-out), border-color 150ms var(--ease-out), color 150ms var(--ease-out), background-color 200ms var(--ease-out);
   touch-action: manipulation;
 }
 .btn:active:not(:disabled) { transform: scale(0.97); }
 .btn-primary { background: var(--accent); color: var(--accent-fg); }
+.btn-primary.btn-success { background: var(--ink); color: var(--accent-fg); }
 @media (hover: hover) and (pointer: fine) {
   .btn-primary:hover:not(:disabled) { filter: brightness(1.08); }
-  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
 }
 .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
-.btn-ghost { background: none; border-color: var(--border); color: var(--fg); }
-.btn-link { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 0.84rem; padding: 3px 0; font-family: inherit; touch-action: manipulation; }
+.btn-link { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 0.85rem; padding: 3px 0; font-family: inherit; touch-action: manipulation; }
 @media (hover: hover) and (pointer: fine) {
   .btn-link:hover { text-decoration: underline; }
 }
@@ -278,7 +277,7 @@ button:focus-visible, input:focus-visible, a:focus-visible, [tabindex]:focus-vis
 .full-text-wrap.open { grid-template-rows: 1fr; }
 .full-text-inner { overflow: hidden; }
 .full-text {
-  white-space: pre-wrap; font-family: var(--font-mono); font-size: 0.82rem;
+  white-space: pre-wrap; font-family: var(--font-mono); font-size: 0.85rem;
   background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
   padding: 12px; margin: 8px 0 0; max-height: 340px; overflow: auto;
 }
@@ -292,6 +291,20 @@ button:focus-visible, input:focus-visible, a:focus-visible, [tabindex]:focus-vis
   border-radius: 999px; padding: 3px 10px; color: var(--mid);
 }
 .chip-missing { border-color: var(--danger); color: var(--danger); }
+button.chip-preview { cursor: pointer; font: inherit; touch-action: manipulation; transition: border-color 150ms var(--ease-out), color 150ms var(--ease-out); }
+@media (hover: hover) and (pointer: fine) {
+  button.chip-preview:hover { border-color: var(--accent); color: var(--accent); }
+}
+button.chip-preview.active { border-color: var(--accent); color: var(--accent); }
+
+.media-preview-inner { padding: 8px 0 0; }
+.media-preview-img {
+  display: block; max-width: 100%; max-height: 420px; width: auto; height: auto;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--bg);
+}
+.media-preview-frame {
+  display: block; width: 100%; height: 480px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-elevated);
+}
 
 .unlisted { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; margin-top: 18px; font-size: 0.85rem; }
 .unlisted summary { cursor: pointer; touch-action: manipulation; }
@@ -301,7 +314,7 @@ footer.site-footer {
   margin-top: 40px; background: var(--bg-elevated); border-top: 1px solid var(--border-subtle);
 }
 .footer-inner { max-width: 860px; margin: 0 auto; padding: 28px 24px 32px; text-align: center; }
-.footer-note { color: var(--fg); font-size: 0.9rem; margin: 0 0 14px; }
+.footer-note { color: var(--fg); font-size: 0.85rem; margin: 0 0 14px; }
 .footer-note .ic { margin-right: 4px; }
 footer.site-footer a { color: var(--mid); }
 @media (hover: hover) and (pointer: fine) {
@@ -1682,6 +1695,7 @@ self.onmessage = function (ev) {
     ddmarker: "Arrastrar y soltar sobre imagen",
     gapselect: "Seleccionar en el texto",
     calculated: "Calculada",
+    random: "Aleatoria",
   };
   function qtypeLabel(qtype) { return QTYPE_LABELS[qtype] || qtype || "Pregunta"; }
 
@@ -1703,6 +1717,18 @@ self.onmessage = function (ev) {
     }
     quiz.questions.forEach((q, i) => {
       blocks.push({ type: "heading", text: `Pregunta ${i + 1} — ${qtypeLabel(q.qtype)}` });
+      if (q.qtype === "random") {
+        blocks.push({ type: "paragraph", text: q.name });
+        const pool = q.randomPool || [];
+        if (pool.length) {
+          blocks.push({ type: "paragraph", text: `Moodle elige una al azar de estas ${pool.length} pregunta(s) cada vez que se hace el examen:` });
+          for (const pq of pool) blocks.push({ type: "paragraph", text: "- " + (pq.name || "(sin título)") });
+        } else {
+          blocks.push({ type: "paragraph", text: "(No se ha podido listar el grupo de preguntas de esa categoría.)" });
+        }
+        blocks.push({ type: "spacer" });
+        return;
+      }
       const qText = htmlToText(q.questiontextRaw);
       if (qText) blocks.push({ type: "paragraph", text: qText });
       if (q.qtype === "essay" || q.answers.length === 0) {
@@ -1729,6 +1755,18 @@ self.onmessage = function (ev) {
     }
     quiz.questions.forEach((q, i) => {
       const lines = [`Pregunta ${i + 1} — ${qtypeLabel(q.qtype)}`];
+      if (q.qtype === "random") {
+        lines.push(q.name);
+        const pool = q.randomPool || [];
+        if (pool.length) {
+          lines.push(`Moodle elige una al azar de estas ${pool.length} pregunta(s) cada vez que se hace el examen:`);
+          for (const pq of pool) lines.push("- " + (pq.name || "(sin título)"));
+        } else {
+          lines.push("(No se ha podido listar el grupo de preguntas de esa categoría.)");
+        }
+        parts.push(lines.join("\n"));
+        return;
+      }
       const qText = htmlToText(q.questiontextRaw);
       if (qText) lines.push(qText);
       if (q.qtype === "essay" || q.answers.length === 0) {
@@ -1815,10 +1853,32 @@ self.onmessage = function (ev) {
     return options.map(o => "- " + o).join("\n");
   }
 
+  // ---------- Wikis: páginas ----------
+  function wikiToBlocks(pages) {
+    const blocks = [];
+    if (!pages || pages.length === 0) {
+      blocks.push({ type: "paragraph", text: "No se han encontrado páginas en este wiki (puede que el backup se generara sin datos de usuario, o que esté vacío)." });
+      return blocks;
+    }
+    for (const p of pages) {
+      blocks.push({ type: "heading", text: p.title || "(sin título)" });
+      const t = htmlToText(p.contentRaw);
+      if (t) blocks.push({ type: "paragraph", text: t });
+      blocks.push({ type: "spacer" });
+    }
+    return blocks;
+  }
+  function wikiToPlainText(pages) {
+    if (!pages || pages.length === 0) {
+      return "No se han encontrado páginas en este wiki (puede que el backup se generara sin datos de usuario, o que esté vacío).";
+    }
+    return pages.map(p => `${p.title || "(sin título)"}\n${htmlToText(p.contentRaw)}`).join("\n\n");
+  }
+
   const api = {
     htmlToText, extractPluginFileRefs, quizToBlocks, quizToPlainText, qtypeLabel,
     forumToBlocks, forumToPlainText, glossaryToBlocks, glossaryToPlainText,
-    choiceToBlocks, choiceToPlainText,
+    choiceToBlocks, choiceToPlainText, wikiToBlocks, wikiToPlainText,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else global.MBZHtml = api;
@@ -2033,16 +2093,27 @@ self.onmessage = function (ev) {
     const usedFileIds = new Set();
 
     // ---------- questions.xml: banco de preguntas (para cuestionarios) ----------
-    const questionsById = new Map(); // id -> { name, questiontextRaw, qtype, answers:[{textRaw, fraction}] }
+    // Soporta dos formatos, confirmados contra el código fuente de Moodle:
+    //   - Antiguo/plano:  question_category > questions > question
+    //   - Actual (4.x):   question_category > question_bank_entries > question_bank_entry
+    //                        > question_version > question_versions > questions > question
+    //     (los nombres "question_version"/"question_versions" vienen intercambiados
+    //     así en el propio código de Moodle — no es un error nuestro de tipeo)
+    const questionsById = new Map();          // id -> { name, questiontextRaw, qtype, answers:[...] }
+    const questionIdByBankEntryId = new Map(); // questionbankentryid -> id de la pregunta (versión más reciente)
+    const categoryInfoById = new Map();        // categoryid -> { name, questionIds:[...] }
     const questionsDoc = getXmlDoc("questions.xml");
     if (questionsDoc && questionsDoc.documentElement) {
       const categoryEls = questionsDoc.documentElement.getElementsByTagName("question_category");
       for (let c = 0; c < categoryEls.length; c++) {
-        const questionsEl = directChild(categoryEls[c], "questions");
-        const qEls = questionsEl ? children(questionsEl, "question") : [];
-        for (const qEl of qEls) {
+        const categoryEl = categoryEls[c];
+        const categoryId = categoryEl.getAttribute ? categoryEl.getAttribute("id") : null;
+        const categoryName = directChildText(categoryEl, "name");
+        const idsInCategory = [];
+
+        function readQuestionEl(qEl, bankEntryId) {
           const id = qEl.getAttribute ? qEl.getAttribute("id") : null;
-          if (!id) continue;
+          if (!id) return;
           const answerEls = qEl.getElementsByTagName("answer");
           const answers = [];
           for (let i = 0; i < answerEls.length; i++) {
@@ -2058,29 +2129,85 @@ self.onmessage = function (ev) {
             qtype: directChildText(qEl, "qtype"),
             answers,
           });
+          idsInCategory.push(id);
+          if (bankEntryId) questionIdByBankEntryId.set(bankEntryId, id);
         }
+
+        // Formato antiguo/plano: question_category > questions > question directamente
+        const flatQuestionsEl = directChild(categoryEl, "questions");
+        if (flatQuestionsEl) {
+          for (const qEl of children(flatQuestionsEl, "question")) readQuestionEl(qEl, null);
+        }
+
+        // Formato actual: anidado bajo question_bank_entries
+        const bankEntriesEl = directChild(categoryEl, "question_bank_entries");
+        if (bankEntriesEl) {
+          for (const entryEl of children(bankEntriesEl, "question_bank_entry")) {
+            const bankEntryId = entryEl.getAttribute ? entryEl.getAttribute("id") : null;
+            const versionWrapperEl = directChild(entryEl, "question_version");
+            const versionEls = versionWrapperEl ? children(versionWrapperEl, "question_versions") : [];
+            // Si hay varias versiones (historial de ediciones), nos quedamos con la última.
+            const lastVersionEl = versionEls[versionEls.length - 1];
+            if (!lastVersionEl) continue;
+            const questionsWrapperEl = directChild(lastVersionEl, "questions");
+            const qEls = questionsWrapperEl ? children(questionsWrapperEl, "question") : [];
+            for (const qEl of qEls) readQuestionEl(qEl, bankEntryId);
+          }
+        }
+
+        if (categoryId) categoryInfoById.set(categoryId, { name: categoryName, questionIds: idsInCategory });
       }
     }
 
     function resolveQuizQuestions(dir, modEl) {
       const instancesEl = modEl.getElementsByTagName("question_instances")[0];
       const instanceEls = instancesEl ? children(instancesEl, "question_instance") : [];
-      let ids = [];
-      if (instanceEls.length) {
-        ids = instanceEls
-          .map(ie => directChildText(ie, "questionid") || directChildText(ie, "question"))
-          .filter(Boolean);
-      } else {
-        // Formato antiguo de respaldo: lista simple separada por comas en <questions>
-        const flat = directChildText(modEl, "questions", "");
-        if (flat) ids = flat.split(",").map(s => s.trim()).filter(s => s && s !== "0");
-      }
       const resolved = [];
       let unresolved = 0;
-      for (const id of ids) {
-        const q = questionsById.get(id);
-        if (q) resolved.push(q);
-        else unresolved++;
+
+      if (instanceEls.length) {
+        for (const ie of instanceEls) {
+          // 1) Formato clásico: id directo de la pregunta
+          const directId = directChildText(ie, "questionid") || directChildText(ie, "question");
+          if (directId && directId !== "0" && questionsById.has(directId)) {
+            resolved.push(questionsById.get(directId));
+            continue;
+          }
+          // 2) Formato actual (pregunta fija reutilizada del banco): question_reference > questionbankentryid
+          const refEl = ie.getElementsByTagName("question_reference")[0];
+          const bankEntryId = refEl ? directChildText(refEl, "questionbankentryid") : "";
+          if (bankEntryId && questionIdByBankEntryId.has(bankEntryId)) {
+            resolved.push(questionsById.get(questionIdByBankEntryId.get(bankEntryId)));
+            continue;
+          }
+          // 3) Pregunta aleatoria: question_set_reference > filtercondition (JSON con la categoría)
+          const setRefEl = ie.getElementsByTagName("question_set_reference")[0];
+          const filterRaw = setRefEl ? directChildText(setRefEl, "filtercondition") : "";
+          if (filterRaw) {
+            let categoryId = null;
+            try { categoryId = String(JSON.parse(filterRaw).questioncategoryid || ""); } catch (e) { /* JSON inesperado, se ignora */ }
+            const cat = categoryId ? categoryInfoById.get(categoryId) : null;
+            if (cat) {
+              resolved.push({
+                name: `Pregunta aleatoria — categoría "${cat.name}"`,
+                questiontextRaw: "",
+                qtype: "random",
+                answers: [],
+                randomPool: cat.questionIds.map(qid => questionsById.get(qid)).filter(Boolean),
+              });
+              continue;
+            }
+          }
+          unresolved++;
+        }
+      } else {
+        // Formato muy antiguo de respaldo: lista simple separada por comas en <questions>
+        const flat = directChildText(modEl, "questions", "");
+        const ids = flat ? flat.split(",").map(s => s.trim()).filter(s => s && s !== "0") : [];
+        for (const id of ids) {
+          const q = questionsById.get(id);
+          if (q) resolved.push(q); else unresolved++;
+        }
       }
       return { questions: resolved, unresolved };
     }
@@ -2090,7 +2217,7 @@ self.onmessage = function (ev) {
       // Campos comunes a casi todas las actividades de Moodle
       const name = directChildText(modEl, "name");
       const introRaw = directChildText(modEl, "intro");
-      const result = { name, introRaw, externalUrl: null, contentRaw: null, chapters: null, quiz: null, forumType: null, discussions: null, entries: null, options: null };
+      const result = { name, introRaw, externalUrl: null, contentRaw: null, chapters: null, quiz: null, forumType: null, discussions: null, entries: null, options: null, wikiPages: null };
 
       if (modname === "url") {
         result.externalUrl = directChildText(modEl, "externalurl");
@@ -2140,6 +2267,21 @@ self.onmessage = function (ev) {
         const optionsEl = modEl.getElementsByTagName("options")[0];
         const optionEls = optionsEl ? children(optionsEl, "option") : [];
         result.options = optionEls.map(oEl => directChildText(oEl, "text")).filter(Boolean);
+      } else if (modname === "wiki") {
+        const pages = [];
+        const subwikisEl = modEl.getElementsByTagName("subwikis")[0];
+        const subwikiEls = subwikisEl ? children(subwikisEl, "subwiki") : [];
+        for (const swEl of subwikiEls) {
+          const pagesEl = directChild(swEl, "pages");
+          const pageEls = pagesEl ? children(pagesEl, "page") : [];
+          for (const pEl of pageEls) {
+            pages.push({
+              title: directChildText(pEl, "title"),
+              contentRaw: directChildText(pEl, "cachedcontent"),
+            });
+          }
+        }
+        result.wikiPages = pages;
       }
       return result;
     }
@@ -2171,7 +2313,7 @@ self.onmessage = function (ev) {
       const info = typeInfo(modulename);
 
       const modDoc = getXmlDoc(`${dir}/${modulename}.xml`);
-      let body = { name: structTitle, introRaw: "", externalUrl: null, contentRaw: null, chapters: null, quiz: null, forumType: null, discussions: null, entries: null, options: null };
+      let body = { name: structTitle, introRaw: "", externalUrl: null, contentRaw: null, chapters: null, quiz: null, forumType: null, discussions: null, entries: null, options: null, wikiPages: null };
       let supported = false;
       if (modDoc && modDoc.documentElement) {
         const modEl = modDoc.documentElement.getElementsByTagName(modulename)[0];
@@ -2205,6 +2347,7 @@ self.onmessage = function (ev) {
         discussions: body.discussions,
         entries: body.entries,
         options: body.options,
+        wikiPages: body.wikiPages,
         files, supported,
       };
     });
@@ -2242,6 +2385,32 @@ self.onmessage = function (ev) {
     for (const [id, meta] of filesById) {
       if (!usedFileIds.has(id)) unlistedFiles.push(meta);
     }
+
+    // ---------- enlaces internos del curso: tokens $@TOKEN*id@$ que Moodle usa
+    // para poder reescribir enlaces entre actividades al restaurar en otro sitio.
+    // Confirmado contra el propio código de restauración de Moodle (quiz_decode_content_links,
+    // patrón /\$@(TOKEN)\*([0-9]+)@\$/). El id suele ser el moduleid de la actividad destino.
+    const moduleIdToTitle = new Map();
+    for (const act of activities) moduleIdToTitle.set(act.moduleid, act.title);
+    function resolveInternalLinks(html) {
+      if (!html || html.indexOf("$@") === -1) return html;
+      return html.replace(/\$@([A-Z_]+)\*?(\d*)@\$/g, (match, token, id) => {
+        if (token.endsWith("VIEWBYID") && id && moduleIdToTitle.has(id)) {
+          return `Actividad del curso: ${moduleIdToTitle.get(id)}`;
+        }
+        return "enlace interno del curso";
+      });
+    }
+    for (const act of activities) {
+      act.intro = resolveInternalLinks(act.intro);
+      act.content = resolveInternalLinks(act.content);
+      if (act.chapters) for (const ch of act.chapters) ch.contentRaw = resolveInternalLinks(ch.contentRaw);
+      if (act.discussions) for (const d of act.discussions) for (const p of d.posts) p.messageRaw = resolveInternalLinks(p.messageRaw);
+      if (act.entries) for (const e of act.entries) e.definitionRaw = resolveInternalLinks(e.definitionRaw);
+      if (act.wikiPages) for (const p of act.wikiPages) p.contentRaw = resolveInternalLinks(p.contentRaw);
+    }
+    courseSummary = resolveInternalLinks(courseSummary);
+    for (const sec of sections) sec.summary = resolveInternalLinks(sec.summary);
 
     report("listo");
 
@@ -2318,6 +2487,8 @@ self.onmessage = function (ev) {
     } else if (act.modulename === "choice") {
       blocks.push({ type: "heading", text: "Opciones" });
       blocks.push(...MBZHtml.choiceToBlocks(act.options));
+    } else if (act.modulename === "wiki") {
+      blocks.push(...MBZHtml.wikiToBlocks(act.wikiPages));
     } else if (act.chapters && act.chapters.length) {
       for (const ch of act.chapters) {
         blocks.push({ type: "heading", text: ch.title || "Capítulo" });
@@ -2356,6 +2527,8 @@ self.onmessage = function (ev) {
       parts.push(MBZHtml.glossaryToPlainText(act.entries));
     } else if (act.modulename === "choice") {
       parts.push("Opciones:\n" + MBZHtml.choiceToPlainText(act.options));
+    } else if (act.modulename === "wiki") {
+      parts.push(MBZHtml.wikiToPlainText(act.wikiPages));
     } else if (act.chapters && act.chapters.length) {
       for (const ch of act.chapters) {
         parts.push("## " + (ch.title || "Capítulo"));
@@ -2524,7 +2697,7 @@ ${body}
           indexLines.push(indexEntryPrefix);
         }
 
-        const richModuleNames = ["quiz", "forum", "glossary", "choice"];
+        const richModuleNames = ["quiz", "forum", "glossary", "choice", "wiki"];
         const hasTextContent = !!(MBZHtml.htmlToText(act.intro) || act.content || (act.chapters && act.chapters.length) || richModuleNames.includes(act.modulename) || !act.supported);
         if (hasTextContent && act.modulename !== "url") {
           if (opts.textFormat === "pdf") {
@@ -3058,6 +3231,10 @@ ${body}
     if (act.modulename === "choice") {
       return act.options && act.options.length ? "Opciones: " + act.options.join(" · ") : "Sin opciones extraíbles";
     }
+    if (act.modulename === "wiki") {
+      const n = act.wikiPages ? act.wikiPages.length : 0;
+      return n ? `${n} página(s): ` + act.wikiPages.slice(0, 6).map(p => p.title).join(" · ") : "Sin páginas extraíbles en este wiki";
+    }
     if (act.content) return MBZHtml.htmlToText(act.content);
     if (act.intro) return MBZHtml.htmlToText(act.intro);
     if (act.chapters && act.chapters.length) return act.chapters.map(c => c.title).join(" · ");
@@ -3073,6 +3250,7 @@ ${body}
     else if (act.modulename === "forum") parts.push(MBZHtml.forumToPlainText(act.discussions));
     else if (act.modulename === "glossary") parts.push(MBZHtml.glossaryToPlainText(act.entries));
     else if (act.modulename === "choice") parts.push("Opciones:\n" + MBZHtml.choiceToPlainText(act.options));
+    else if (act.modulename === "wiki") parts.push(MBZHtml.wikiToPlainText(act.wikiPages));
     else if (act.chapters && act.chapters.length) {
       for (const ch of act.chapters) { parts.push("· " + (ch.title || "Capítulo")); const t = MBZHtml.htmlToText(ch.contentRaw); if (t) parts.push(t); }
     } else if (act.content) { const t = MBZHtml.htmlToText(act.content); if (t) parts.push(t); }
@@ -3103,10 +3281,20 @@ ${body}
     const preview = truncate(activityPreviewText(act), 140);
     if (preview) row.appendChild(el("p", { class: "activity-preview" }, [preview]));
 
+    const mediaPreviewId = `mediaprev-${act.moduleid}`;
     if (act.files && act.files.length) {
-      row.appendChild(el("div", { class: "file-chips" }, act.files.map(f =>
-        el("span", { class: "chip" + (f.existsInArchive ? "" : " chip-missing") }, [`📎 ${f.filename} (${fmtBytes(f.filesize)})`])
-      )));
+      row.appendChild(el("div", { class: "file-chips" }, act.files.map(f => {
+        if (f.existsInArchive && isPreviewableFile(f)) {
+          return el("button", {
+            type: "button", class: "chip chip-preview",
+            onclick: (e) => toggleMediaPreview(e.currentTarget, f, mediaPreviewId),
+          }, [`👁 ${f.filename} (${fmtBytes(f.filesize)})`]);
+        }
+        return el("span", { class: "chip" + (f.existsInArchive ? "" : " chip-missing") }, [`📎 ${f.filename} (${fmtBytes(f.filesize)})`]);
+      })));
+      row.appendChild(el("div", { class: "full-text-wrap", id: mediaPreviewId }, [
+        el("div", { class: "full-text-inner media-preview-inner" }),
+      ]));
     }
     if (!act.supported) {
       row.appendChild(el("p", { class: "activity-unsupported" }, ["Vista simplificada: no se ha podido leer el contenido completo de este tipo de actividad."]));
@@ -3136,6 +3324,50 @@ ${body}
     wrap.classList.add("open");
     btn.setAttribute("aria-expanded", "true");
     btn.textContent = "Ocultar";
+  }
+
+  // ---------- Vista previa de imágenes/PDF sin descargar ----------
+  function isPreviewableFile(f) {
+    const m = (f.mimetype || "").toLowerCase();
+    return m.startsWith("image/") || m === "application/pdf";
+  }
+  const mediaPreviewUrls = new Map(); // previewId -> blob URL actualmente mostrada ahí (para poder revocarla)
+
+  function toggleMediaPreview(btn, f, previewId) {
+    const wrap = document.getElementById(previewId);
+    const inner = wrap.querySelector(".media-preview-inner");
+    const isOpenSameFile = wrap.classList.contains("open") && inner.dataset.currentFile === f.physicalPath;
+
+    // Si ya había algo abierto en este hueco (mismo archivo u otro de la misma
+    // actividad), liberamos su blob antes de seguir — nunca dejamos URLs sueltas.
+    const prevUrl = mediaPreviewUrls.get(previewId);
+    if (prevUrl) { URL.revokeObjectURL(prevUrl); mediaPreviewUrls.delete(previewId); }
+    const prevBtn = wrap.parentElement.querySelector(".chip-preview.active");
+    if (prevBtn) prevBtn.classList.remove("active");
+
+    if (isOpenSameFile) {
+      wrap.classList.remove("open");
+      inner.innerHTML = "";
+      delete inner.dataset.currentFile;
+      return;
+    }
+
+    const data = state.parsed.fileMap.get(f.physicalPath);
+    if (!data) return;
+    const blob = new Blob([data], { type: f.mimetype || "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    mediaPreviewUrls.set(previewId, url);
+
+    inner.innerHTML = "";
+    const isPdf = (f.mimetype || "").toLowerCase() === "application/pdf";
+    if (isPdf) {
+      inner.appendChild(el("iframe", { class: "media-preview-frame", src: url, title: f.filename }));
+    } else {
+      inner.appendChild(el("img", { class: "media-preview-img", src: url, alt: f.filename }));
+    }
+    inner.dataset.currentFile = f.physicalPath;
+    wrap.classList.add("open");
+    btn.classList.add("active");
   }
 
   function renderUnlisted(unlistedFiles) {
@@ -3178,15 +3410,27 @@ ${body}
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 4000);
+
+      // Confirmación breve — hasta ahora la única señal de que terminó bien
+      // era el propio gestor de descargas del navegador; el botón volvía a
+      // su estado normal en silencio, sin cerrar el círculo de la acción.
+      btn.classList.add("btn-success");
+      btn.disabled = false;
+      btn.textContent = "✓ Descargado";
+      setTimeout(() => {
+        if (state.parsed !== mySession) return;
+        btn.classList.remove("btn-success");
+        btn.innerHTML = originalHtml;
+      }, 1600);
+      return;
     } catch (e) {
       if (state.parsed !== mySession) return;
       console.error(e);
       alert("No se ha podido generar la descarga: " + e.message);
-    } finally {
-      if (state.parsed === mySession) {
-        btn.disabled = false;
-        btn.innerHTML = originalHtml;
-      }
+    }
+    if (state.parsed === mySession) {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
     }
   }
 

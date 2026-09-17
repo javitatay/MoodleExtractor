@@ -51,6 +51,8 @@ Es la herramienta pensada para ese "toma, esto es lo que dio el compañero el a�
 - 💬 **Mensajes de foros** (incluido el de "Avisos"), **entradas de glosario**, **páginas de wiki** y **opciones de consultas/elecciones**, cuando el backup incluye datos de usuario — con aviso claro cuando no es el caso, en vez de mostrarlo vacío sin explicación.
 - 🎲 **Cuestionarios con preguntas aleatorias**: cuando un examen saca una pregunta al azar de una categoría (en vez de una fija), se muestra el grupo completo del que Moodle elige, no solo "pregunta aleatoria" sin más detalle.
 - 🔗 **Enlaces internos del curso resueltos**: cuando una página o etiqueta enlaza a otra actividad del mismo curso, se muestra su nombre real en vez del código interno de Moodle.
+- ⇄ **Comparar dos backups**: carga un segundo `.mbz` y ve qué secciones y actividades se añadieron, se quitaron o cambiaron entre uno y otro — útil para saber qué es distinto entre la copia del curso de este año y la del anterior.
+- 📘 **Lecciones, talleres, bases de datos y chats**: páginas de lección (con su navegación), instrucciones y entregas de ejemplo de un taller, el esquema de campos de una base de datos, y los mensajes de un chat, todo con el mismo criterio de "si no hay datos que mostrar, se avisa" del resto de actividades.
 - 📖 **PDF único de todo el curso**, opcional, con cada actividad en su propia página — para leer o imprimir de un tirón en vez de abrir un archivo por actividad.
 - ⚠️ **Avisos claros** cuando alguna actividad no se ha podido leer completamente (backup incompleto, tipo no soportado…), en vez de fallar en silencio.
 - 🧩 **Archivos "huérfanos"** del backup no ligados a ninguna actividad visible (adjuntos del banco de preguntas, etc.) listados aparte, por si también interesan.
@@ -88,8 +90,12 @@ MoodleExtractor interpreta el formato de backup `moodle2` (el usado por Moodle 2
 | 📖 Glosario (`glossary`) | Concepto y definición de cada entrada |
 | 🗳️ Consulta (`choice`) | Las opciones planteadas |
 | 🌐 Wiki (`wiki`) | Todas las páginas, con su contenido (si el backup incluye datos de usuario) |
+| 📘 Lección (`lesson`) | Todas las páginas, con hacia dónde lleva cada opción de navegación |
+| 🛠️ Taller (`workshop`) | Instrucciones para autoría y evaluación, entregas de ejemplo, conclusión |
+| 🗄️ Base de datos (`data`) | El esquema de campos definido (los registros son datos de usuario) |
+| 💭 Chat (`chat`) | Los mensajes (si el backup incluye datos de usuario) |
 
-El resto de tipos (tarea, wiki, taller, SCORM, LTI...) se muestran igualmente en el árbol con su nombre y descripción, marcados como "vista simplificada" — se listan y se puede extraer su descripción, pero no su contenido interactivo completo (entregas de una tarea, paquetes SCORM, etc.), ya que eso no tiene un equivalente razonable en PDF o archivo suelto.
+El resto de tipos (tarea, SCORM, LTI, encuesta...) se muestran igualmente en el árbol con su nombre y descripción, marcados como "vista simplificada" — se listan y se puede extraer su descripción, pero no su contenido interactivo completo (entregas de una tarea, paquetes SCORM, etc.), ya que eso no tiene un equivalente razonable en PDF o archivo suelto.
 
 ---
 
@@ -128,7 +134,8 @@ Todo el procesamiento — descompresión, lectura del XML, generación del PDF y
 - Los cuestionarios extraen pregunta y respuestas para los tipos más comunes (opción múltiple, verdadero/falso, respuesta corta, ensayo), incluidas las preguntas fijas del banco moderno de Moodle 4.x y las preguntas aleatorias por categoría (mostrando el grupo completo del que se elige). Tipos más complejos (emparejamiento, arrastrar y soltar, Cloze) se detectan pero sin sus opciones detalladas.
 - La vista previa sin descargar solo funciona con imágenes y PDF; el resto de tipos de archivo se descargan para abrirlos con su programa habitual.
 - Los enlaces internos del curso (cuando una página enlaza a otra actividad del mismo curso) se resuelven a su título real; enlaces a otros elementos menos comunes (bancos de preguntas, calificaciones...) se muestran como "enlace interno del curso" en vez del código interno de Moodle.
-- Otras actividades interactivas (tareas, SCORM, talleres, lecciones...) se listan con su descripción, pero su contenido interno no se convierte — normalmente no tiene sentido fuera de Moodle.
+- Otras actividades interactivas (tareas, SCORM, LTI...) se listan con su descripción, pero su contenido interno no se convierte — normalmente no tiene sentido fuera de Moodle.
+- El comparador de backups empareja actividades por su identificador interno (fiable cuando es el mismo curso respaldado dos veces) y, si no coincide, por tipo+título (para cursos distintos con estructura parecida); no compara el contenido palabra por palabra, solo indica qué actividades cambiaron.
 - Backups muy antiguos (formato Moodle 1.9, previo al formato `moodle2`) no están soportados.
 - Se ha probado con backups de tamaño moderado; con backups enormes (varios GB, típicamente cursos con muchos vídeos pesados) el navegador necesitará bastante memoria RAM libre, al mantenerse todo en memoria durante el proceso.
 

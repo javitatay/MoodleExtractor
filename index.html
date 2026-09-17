@@ -40,6 +40,7 @@ body.light {
   --accent: #935b07;
   --accent-fg: #ffffff;
   --ink: #0c7555;
+  --danger: #a34444;
   --border: #dcdcd6;
   --border-subtle: rgba(0,0,0,0.07);
   color-scheme: light;
@@ -192,6 +193,10 @@ main { max-width: 860px; margin: 0 auto; padding: 32px 24px 64px; }
   .btn-primary:hover:not(:disabled) { filter: brightness(1.08); }
 }
 .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-ghost { background: none; border-color: var(--border); color: var(--fg); }
+@media (hover: hover) and (pointer: fine) {
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+}
 .btn-link { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 0.85rem; padding: 3px 0; font-family: inherit; touch-action: manipulation; }
 @media (hover: hover) and (pointer: fine) {
   .btn-link:hover { text-decoration: underline; }
@@ -309,6 +314,18 @@ button.chip-preview.active { border-color: var(--accent); color: var(--accent); 
 .unlisted { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; margin-top: 18px; font-size: 0.85rem; }
 .unlisted summary { cursor: pointer; touch-action: manipulation; }
 .unlisted-list { color: var(--mid); max-height: 160px; overflow: auto; margin: 8px 0 0; padding-left: 20px; content-visibility: auto; }
+
+/* ---------- Comparar con otro archivo ---------- */
+.compare-subtitle { color: var(--mid); font-size: 0.85rem; margin: 0 0 14px; }
+.compare-loading { color: var(--mid); font-size: 0.85rem; font-style: italic; }
+.diff-badge {
+  font-family: var(--font-mono); font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.03em; border: 1px solid currentColor; border-radius: 4px; padding: 2px 7px;
+}
+.diff-added { color: var(--ink); }
+.diff-removed { color: var(--danger); }
+.diff-modified { color: var(--accent); }
+.diff-row-unchanged { opacity: 0.5; }
 
 footer.site-footer {
   margin-top: 40px; background: var(--bg-elevated); border-top: 1px solid var(--border-subtle);
@@ -1875,10 +1892,125 @@ self.onmessage = function (ev) {
     return pages.map(p => `${p.title || "(sin título)"}\n${htmlToText(p.contentRaw)}`).join("\n\n");
   }
 
+  // ---------- Lecciones: páginas con ramificación ----------
+  function jumptoLabel(jumpto, titleById) {
+    const n = parseInt(jumpto, 10);
+    if (isNaN(n)) return "";
+    if (n > 0) return titleById.has(String(n)) ? ` → ${titleById.get(String(n))}` : "";
+    if (n === -9) return " → (fin de la lección)";
+    if (n < 0) return " → (navegación especial)";
+    return "";
+  }
+  function lessonToBlocks(pages) {
+    if (!pages || pages.length === 0) {
+      return [{ type: "paragraph", text: "No se han encontrado páginas en esta lección." }];
+    }
+    const titleById = new Map(pages.map(p => [p.id, p.title]));
+    const blocks = [];
+    for (const p of pages) {
+      blocks.push({ type: "heading", text: p.title || "(sin título)" });
+      const t = htmlToText(p.contentRaw);
+      if (t) blocks.push({ type: "paragraph", text: t });
+      for (const o of p.options || []) {
+        const label = htmlToText(o.textRaw) || "(continuar)";
+        blocks.push({ type: "paragraph", text: "- " + label + jumptoLabel(o.jumpto, titleById) });
+      }
+      blocks.push({ type: "spacer" });
+    }
+    return blocks;
+  }
+  function lessonToPlainText(pages) {
+    if (!pages || pages.length === 0) return "No se han encontrado páginas en esta lección.";
+    const titleById = new Map(pages.map(p => [p.id, p.title]));
+    return pages.map(p => {
+      const lines = [p.title || "(sin título)"];
+      const t = htmlToText(p.contentRaw);
+      if (t) lines.push(t);
+      for (const o of p.options || []) {
+        const label = htmlToText(o.textRaw) || "(continuar)";
+        lines.push("- " + label + jumptoLabel(o.jumpto, titleById));
+      }
+      return lines.join("\n");
+    }).join("\n\n");
+  }
+
+  // ---------- Talleres: instrucciones, ejemplos y conclusión (contenido de profesorado, no entregas) ----------
+  function workshopToBlocks(ws) {
+    const blocks = [];
+    if (!ws) return [{ type: "paragraph", text: "No se ha encontrado contenido adicional para este taller." }];
+    const authors = htmlToText(ws.instructAuthorsRaw);
+    if (authors) { blocks.push({ type: "heading", text: "Instrucciones para quien entrega" }); blocks.push({ type: "paragraph", text: authors }); blocks.push({ type: "spacer" }); }
+    const reviewers = htmlToText(ws.instructReviewersRaw);
+    if (reviewers) { blocks.push({ type: "heading", text: "Instrucciones para quien evalúa" }); blocks.push({ type: "paragraph", text: reviewers }); blocks.push({ type: "spacer" }); }
+    if (ws.examples && ws.examples.length) {
+      blocks.push({ type: "heading", text: "Entregas de ejemplo" });
+      for (const ex of ws.examples) {
+        blocks.push({ type: "paragraph", text: "· " + (ex.title || "(sin título)") });
+        const t = htmlToText(ex.contentRaw);
+        if (t) blocks.push({ type: "paragraph", text: t });
+      }
+      blocks.push({ type: "spacer" });
+    }
+    const conclusion = htmlToText(ws.conclusionRaw);
+    if (conclusion) { blocks.push({ type: "heading", text: "Conclusión" }); blocks.push({ type: "paragraph", text: conclusion }); }
+    if (blocks.length === 0) blocks.push({ type: "paragraph", text: "No se ha encontrado contenido adicional para este taller." });
+    return blocks;
+  }
+  function workshopToPlainText(ws) {
+    if (!ws) return "No se ha encontrado contenido adicional para este taller.";
+    const parts = [];
+    const authors = htmlToText(ws.instructAuthorsRaw);
+    if (authors) parts.push("Instrucciones para quien entrega:\n" + authors);
+    const reviewers = htmlToText(ws.instructReviewersRaw);
+    if (reviewers) parts.push("Instrucciones para quien evalúa:\n" + reviewers);
+    if (ws.examples && ws.examples.length) {
+      parts.push("Entregas de ejemplo:\n" + ws.examples.map(ex => `· ${ex.title || "(sin título)"}\n${htmlToText(ex.contentRaw)}`).join("\n\n"));
+    }
+    const conclusion = htmlToText(ws.conclusionRaw);
+    if (conclusion) parts.push("Conclusión:\n" + conclusion);
+    return parts.length ? parts.join("\n\n") : "No se ha encontrado contenido adicional para este taller.";
+  }
+
+  // ---------- Bases de datos: esquema de campos (las fichas en sí son datos de usuario) ----------
+  function dataFieldsToBlocks(fields) {
+    if (!fields || fields.length === 0) {
+      return [{ type: "paragraph", text: "No se han encontrado campos para esta base de datos." }];
+    }
+    const blocks = [{ type: "heading", text: "Campos de esta base de datos" }];
+    for (const f of fields) {
+      const desc = htmlToText(f.description);
+      blocks.push({ type: "paragraph", text: `- ${f.name || "(sin nombre)"} (${f.type || "tipo desconocido"})` + (desc ? `: ${desc}` : "") });
+    }
+    return blocks;
+  }
+  function dataFieldsToPlainText(fields) {
+    if (!fields || fields.length === 0) return "No se han encontrado campos para esta base de datos.";
+    return "Campos de esta base de datos:\n" + fields.map(f => {
+      const desc = htmlToText(f.description);
+      return `- ${f.name || "(sin nombre)"} (${f.type || "tipo desconocido"})` + (desc ? `: ${desc}` : "");
+    }).join("\n");
+  }
+
+  // ---------- Chat: mensajes (si el backup incluye datos de usuario) ----------
+  function chatToBlocks(messages) {
+    if (!messages || messages.length === 0) {
+      return [{ type: "paragraph", text: "No se han encontrado mensajes en este chat (puede que el backup se generara sin datos de usuario, o que no se llegara a usar)." }];
+    }
+    return messages.map(m => ({ type: "paragraph", text: htmlToText(m.messageRaw) })).filter(b => b.text);
+  }
+  function chatToPlainText(messages) {
+    if (!messages || messages.length === 0) {
+      return "No se han encontrado mensajes en este chat (puede que el backup se generara sin datos de usuario, o que no se llegara a usar).";
+    }
+    return messages.map(m => htmlToText(m.messageRaw)).filter(Boolean).join("\n");
+  }
+
   const api = {
     htmlToText, extractPluginFileRefs, quizToBlocks, quizToPlainText, qtypeLabel,
     forumToBlocks, forumToPlainText, glossaryToBlocks, glossaryToPlainText,
     choiceToBlocks, choiceToPlainText, wikiToBlocks, wikiToPlainText,
+    lessonToBlocks, lessonToPlainText, workshopToBlocks, workshopToPlainText,
+    dataFieldsToBlocks, dataFieldsToPlainText, chatToBlocks, chatToPlainText,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else global.MBZHtml = api;
@@ -2217,7 +2349,7 @@ self.onmessage = function (ev) {
       // Campos comunes a casi todas las actividades de Moodle
       const name = directChildText(modEl, "name");
       const introRaw = directChildText(modEl, "intro");
-      const result = { name, introRaw, externalUrl: null, contentRaw: null, chapters: null, quiz: null, forumType: null, discussions: null, entries: null, options: null, wikiPages: null };
+      const result = { name, introRaw, externalUrl: null, contentRaw: null, chapters: null, quiz: null, forumType: null, discussions: null, entries: null, options: null, wikiPages: null, lessonPages: null, workshop: null, dataFields: null, chatMessages: null };
 
       if (modname === "url") {
         result.externalUrl = directChildText(modEl, "externalurl");
@@ -2282,6 +2414,52 @@ self.onmessage = function (ev) {
           }
         }
         result.wikiPages = pages;
+      } else if (modname === "lesson") {
+        const pagesEl = modEl.getElementsByTagName("pages")[0];
+        const pageEls = pagesEl ? children(pagesEl, "page") : [];
+        result.lessonPages = pageEls.map(pEl => {
+          const answersEl = directChild(pEl, "answers");
+          const answerEls = answersEl ? children(answersEl, "answer") : [];
+          return {
+            id: pEl.getAttribute ? pEl.getAttribute("id") : null,
+            title: directChildText(pEl, "title"),
+            contentRaw: directChildText(pEl, "contents"),
+            options: answerEls.map(aEl => ({
+              textRaw: directChildText(aEl, "answer_text"),
+              jumpto: directChildText(aEl, "jumpto"),
+            })),
+          };
+        });
+      } else if (modname === "workshop") {
+        const exSubsEl = modEl.getElementsByTagName("examplesubmissions")[0];
+        const exSubEls = exSubsEl ? children(exSubsEl, "examplesubmission") : [];
+        result.workshop = {
+          instructAuthorsRaw: directChildText(modEl, "instructauthors"),
+          instructReviewersRaw: directChildText(modEl, "instructreviewers"),
+          conclusionRaw: directChildText(modEl, "conclusion"),
+          examples: exSubEls.map(eEl => ({
+            title: directChildText(eEl, "title"),
+            contentRaw: directChildText(eEl, "content"),
+          })),
+        };
+      } else if (modname === "data") {
+        const fieldsEl = modEl.getElementsByTagName("fields")[0];
+        const fieldEls = fieldsEl ? children(fieldsEl, "field") : [];
+        result.dataFields = fieldEls.map(fEl => ({
+          name: directChildText(fEl, "name"),
+          type: directChildText(fEl, "type"),
+          description: directChildText(fEl, "description"),
+        }));
+      } else if (modname === "chat") {
+        const messagesEl = modEl.getElementsByTagName("messages")[0];
+        const messageEls = messagesEl ? children(messagesEl, "message") : [];
+        result.chatMessages = messageEls
+          .filter(mEl => directChildText(mEl, "system") !== "1")
+          .map(mEl => ({
+            messageRaw: directChildText(mEl, "message_text"),
+            timestamp: parseInt(directChildText(mEl, "timestamp", "0"), 10) || 0,
+          }))
+          .sort((a, b) => a.timestamp - b.timestamp);
       }
       return result;
     }
@@ -2313,7 +2491,7 @@ self.onmessage = function (ev) {
       const info = typeInfo(modulename);
 
       const modDoc = getXmlDoc(`${dir}/${modulename}.xml`);
-      let body = { name: structTitle, introRaw: "", externalUrl: null, contentRaw: null, chapters: null, quiz: null, forumType: null, discussions: null, entries: null, options: null, wikiPages: null };
+      let body = { name: structTitle, introRaw: "", externalUrl: null, contentRaw: null, chapters: null, quiz: null, forumType: null, discussions: null, entries: null, options: null, wikiPages: null, lessonPages: null, workshop: null, dataFields: null, chatMessages: null };
       let supported = false;
       if (modDoc && modDoc.documentElement) {
         const modEl = modDoc.documentElement.getElementsByTagName(modulename)[0];
@@ -2348,6 +2526,10 @@ self.onmessage = function (ev) {
         entries: body.entries,
         options: body.options,
         wikiPages: body.wikiPages,
+        lessonPages: body.lessonPages,
+        workshop: body.workshop,
+        dataFields: body.dataFields,
+        chatMessages: body.chatMessages,
         files, supported,
       };
     });
@@ -2408,6 +2590,17 @@ self.onmessage = function (ev) {
       if (act.discussions) for (const d of act.discussions) for (const p of d.posts) p.messageRaw = resolveInternalLinks(p.messageRaw);
       if (act.entries) for (const e of act.entries) e.definitionRaw = resolveInternalLinks(e.definitionRaw);
       if (act.wikiPages) for (const p of act.wikiPages) p.contentRaw = resolveInternalLinks(p.contentRaw);
+      if (act.lessonPages) for (const p of act.lessonPages) {
+        p.contentRaw = resolveInternalLinks(p.contentRaw);
+        for (const o of p.options) o.textRaw = resolveInternalLinks(o.textRaw);
+      }
+      if (act.workshop) {
+        act.workshop.instructAuthorsRaw = resolveInternalLinks(act.workshop.instructAuthorsRaw);
+        act.workshop.instructReviewersRaw = resolveInternalLinks(act.workshop.instructReviewersRaw);
+        act.workshop.conclusionRaw = resolveInternalLinks(act.workshop.conclusionRaw);
+        for (const ex of act.workshop.examples) ex.contentRaw = resolveInternalLinks(ex.contentRaw);
+      }
+      if (act.chatMessages) for (const m of act.chatMessages) m.messageRaw = resolveInternalLinks(m.messageRaw);
     }
     courseSummary = resolveInternalLinks(courseSummary);
     for (const sec of sections) sec.summary = resolveInternalLinks(sec.summary);
@@ -2489,6 +2682,14 @@ self.onmessage = function (ev) {
       blocks.push(...MBZHtml.choiceToBlocks(act.options));
     } else if (act.modulename === "wiki") {
       blocks.push(...MBZHtml.wikiToBlocks(act.wikiPages));
+    } else if (act.modulename === "lesson") {
+      blocks.push(...MBZHtml.lessonToBlocks(act.lessonPages));
+    } else if (act.modulename === "workshop") {
+      blocks.push(...MBZHtml.workshopToBlocks(act.workshop));
+    } else if (act.modulename === "data") {
+      blocks.push(...MBZHtml.dataFieldsToBlocks(act.dataFields));
+    } else if (act.modulename === "chat") {
+      blocks.push(...MBZHtml.chatToBlocks(act.chatMessages));
     } else if (act.chapters && act.chapters.length) {
       for (const ch of act.chapters) {
         blocks.push({ type: "heading", text: ch.title || "Capítulo" });
@@ -2529,6 +2730,14 @@ self.onmessage = function (ev) {
       parts.push("Opciones:\n" + MBZHtml.choiceToPlainText(act.options));
     } else if (act.modulename === "wiki") {
       parts.push(MBZHtml.wikiToPlainText(act.wikiPages));
+    } else if (act.modulename === "lesson") {
+      parts.push(MBZHtml.lessonToPlainText(act.lessonPages));
+    } else if (act.modulename === "workshop") {
+      parts.push(MBZHtml.workshopToPlainText(act.workshop));
+    } else if (act.modulename === "data") {
+      parts.push(MBZHtml.dataFieldsToPlainText(act.dataFields));
+    } else if (act.modulename === "chat") {
+      parts.push(MBZHtml.chatToPlainText(act.chatMessages));
     } else if (act.chapters && act.chapters.length) {
       for (const ch of act.chapters) {
         parts.push("## " + (ch.title || "Capítulo"));
@@ -2697,7 +2906,7 @@ ${body}
           indexLines.push(indexEntryPrefix);
         }
 
-        const richModuleNames = ["quiz", "forum", "glossary", "choice", "wiki"];
+        const richModuleNames = ["quiz", "forum", "glossary", "choice", "wiki", "lesson", "workshop", "data", "chat"];
         const hasTextContent = !!(MBZHtml.htmlToText(act.intro) || act.content || (act.chapters && act.chapters.length) || richModuleNames.includes(act.modulename) || !act.supported);
         if (hasTextContent && act.modulename !== "url") {
           if (opts.textFormat === "pdf") {
@@ -2814,6 +3023,148 @@ ${body}
   </script>
   <script>
 /*!
+ * compare.js — Compara dos cursos ya interpretados (course tree de mbz-parser.js)
+ * y devuelve qué secciones/actividades se añadieron, se quitaron, cambiaron o
+ * siguen igual entre A (el primero cargado) y B (el segundo, el de comparación).
+ *
+ * Emparejamiento en dos pasadas:
+ *   1) por moduleid exacto — cubre el caso más fiable: el mismo curso de Moodle
+ *      respaldado dos veces (el moduleid es estable en la base de datos del
+ *      sitio de origen mientras no se borre y recree la actividad).
+ *   2) para lo que quede sin emparejar, por (modulename + título normalizado) —
+ *      cubre backups de cursos distintos pero con estructura parecida (p. ej.
+ *      el mismo curso restaurado como uno nuevo, donde los moduleid cambian).
+ */
+(function (global) {
+  "use strict";
+
+  function normalizeTitle(t) {
+    return (t || "").trim().toLowerCase().replace(/\s+/g, " ");
+  }
+
+  // Huella de contenido relevante de una actividad — si cambia, la marcamos
+  // "modificada"; no pretende ser un diff línea a línea, solo detectar que
+  // algo cambió para que el profesor sepa qué revisar.
+  function activityFingerprint(act) {
+    const parts = [
+      act.title, act.intro, act.content, act.externalUrl || "",
+      (act.files || []).map(f => `${f.filename}:${f.filesize}`).sort().join(","),
+      act.quiz && act.quiz.questions ? act.quiz.questions.map(q => q.name).join(",") : "",
+      act.chapters ? act.chapters.map(c => c.title).join(",") : "",
+      act.wikiPages ? act.wikiPages.map(p => p.title).join(",") : "",
+      act.entries ? act.entries.map(e => e.concept).join(",") : "",
+      act.options ? act.options.join(",") : "",
+      act.dataFields ? act.dataFields.map(f => f.name).join(",") : "",
+      act.lessonPages ? act.lessonPages.map(p => p.title).join(",") : "",
+    ];
+    return parts.join("|");
+  }
+
+  function matchActivities(actsA, actsB) {
+    const byModuleIdB = new Map(actsB.map(a => [a.moduleid, a]));
+    const usedB = new Set();
+    const matched = [];
+
+    for (const a of actsA) {
+      const b = byModuleIdB.get(a.moduleid);
+      if (b && !usedB.has(b.moduleid)) { matched.push({ a, b }); usedB.add(b.moduleid); }
+    }
+    const matchedAIds = new Set(matched.map(m => m.a.moduleid));
+
+    const remainingBByKey = new Map();
+    for (const b of actsB) {
+      if (usedB.has(b.moduleid)) continue;
+      const key = b.modulename + "::" + normalizeTitle(b.title);
+      if (!remainingBByKey.has(key)) remainingBByKey.set(key, []);
+      remainingBByKey.get(key).push(b);
+    }
+
+    const added = [];
+    for (const a of actsA) {
+      if (matchedAIds.has(a.moduleid)) continue;
+      const key = a.modulename + "::" + normalizeTitle(a.title);
+      const candidates = remainingBByKey.get(key);
+      if (candidates && candidates.length) {
+        const b = candidates.shift();
+        matched.push({ a, b });
+        usedB.add(b.moduleid);
+      }
+    }
+
+    const removed = actsA.filter(a => !matched.some(m => m.a.moduleid === a.moduleid));
+    for (const b of actsB) if (!usedB.has(b.moduleid)) added.push(b);
+
+    const results = matched.map(({ a, b }) => ({
+      a, b, status: activityFingerprint(a) === activityFingerprint(b) ? "unchanged" : "modified",
+    }));
+
+    return { matched: results, removed, added };
+  }
+
+  /**
+   * @param {object} courseA  árbol .course de un curso ya parseado (el "antes")
+   * @param {object} courseB  árbol .course del segundo curso (el "después")
+   * @returns {{sections: Array, summary: {added:number, removed:number, modified:number, unchanged:number}}}
+   */
+  function compareCourses(courseA, courseB) {
+    const secsA = courseA.sections;
+    const secsB = courseB.sections;
+    const byIdB = new Map(secsB.map(s => [s.sectionid, s]));
+    const usedB = new Set();
+    const sectionPairs = [];
+
+    for (const sa of secsA) {
+      const sb = byIdB.get(sa.sectionid);
+      if (sb && !usedB.has(sb.sectionid)) { sectionPairs.push([sa, sb]); usedB.add(sb.sectionid); }
+    }
+    const pairedAIds = new Set(sectionPairs.map(([sa]) => sa.sectionid));
+    const remainingBByTitle = new Map();
+    for (const sb of secsB) {
+      if (usedB.has(sb.sectionid)) continue;
+      const key = normalizeTitle(sb.title);
+      if (!remainingBByTitle.has(key)) remainingBByTitle.set(key, []);
+      remainingBByTitle.get(key).push(sb);
+    }
+    for (const sa of secsA) {
+      if (pairedAIds.has(sa.sectionid)) continue;
+      const cands = remainingBByTitle.get(normalizeTitle(sa.title));
+      if (cands && cands.length) { const sb = cands.shift(); sectionPairs.push([sa, sb]); usedB.add(sb.sectionid); }
+      else sectionPairs.push([sa, null]); // sección eliminada por completo
+    }
+    for (const sb of secsB) if (!usedB.has(sb.sectionid)) sectionPairs.push([null, sb]); // sección nueva por completo
+
+    const summary = { added: 0, removed: 0, modified: 0, unchanged: 0 };
+    const sections = sectionPairs.map(([sa, sb]) => {
+      const actsA = sa ? sa.activities : [];
+      const actsB = sb ? sb.activities : [];
+      const { matched, removed, added } = matchActivities(actsA, actsB);
+      summary.removed += removed.length;
+      summary.added += added.length;
+      for (const m of matched) summary[m.status === "modified" ? "modified" : "unchanged"]++;
+
+      const rows = [
+        ...matched.map(m => ({ status: m.status, act: m.status === "modified" ? m.b : m.a, before: m.a, after: m.b })),
+        ...removed.map(a => ({ status: "removed", act: a, before: a, after: null })),
+        ...added.map(b => ({ status: "added", act: b, before: null, after: b })),
+      ];
+      return {
+        title: (sb || sa).title,
+        sectionStatus: !sa ? "added" : !sb ? "removed" : "unchanged",
+        rows,
+      };
+    });
+
+    return { sections, summary };
+  }
+
+  const api = { compareCourses };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else global.MBZCompare = api;
+})(typeof window !== "undefined" ? window : globalThis);
+
+  </script>
+  <script>
+/*!
  * app.js — Lógica de interfaz de MoodleExtractor: gestiona el estado de la app
  * (vacío → procesando → cargado/error), delega el trabajo pesado a un Web
  * Worker, pinta el inventario de curso con checkboxes accesibles, y dispara
@@ -2854,6 +3205,7 @@ ${body}
     selection: { sections: {}, activities: {} }, // false = excluido; ausente = incluido
     includeUnlisted: false,
     exportOpts: { textFormat: "pdf", includeOriginalFiles: true, includeIndex: true, singleCoursePdf: false },
+    compare: null, compareLoading: false,
   };
   // Se incrementa en cada carga/reinicio; una carga en curso comprueba que
   // sigue siendo la más reciente antes de tocar el estado, para que cambiar
@@ -3003,7 +3355,7 @@ ${body}
 
   function resetToEmpty() {
     loadGeneration++; // invalida cualquier carga en curso (handleFile comprobará stale() y abortará)
-    state = { phase: "empty", error: null, parsed: null, selection: { sections: {}, activities: {} }, includeUnlisted: false, exportOpts: state.exportOpts };
+    state = { phase: "empty", error: null, parsed: null, selection: { sections: {}, activities: {} }, includeUnlisted: false, exportOpts: state.exportOpts, compare: null, compareLoading: false };
     render();
   }
 
@@ -3113,6 +3465,7 @@ ${body}
           el("li", { class: "tabular" }, [`${totalFiles} archivo(s)`]),
         ]),
       ]),
+      renderCompareEntry(),
     ]));
 
     if (warnings && warnings.length) {
@@ -3120,6 +3473,11 @@ ${body}
         el("summary", {}, [`⚠️ ${warnings.length} aviso(s) durante la lectura`]),
         el("ul", {}, warnings.map(w => el("li", {}, [w]))),
       ]));
+    }
+
+    if (state.compare) {
+      root.appendChild(renderCompareView());
+      return root;
     }
 
     root.appendChild(renderExportBar());
@@ -3131,6 +3489,98 @@ ${body}
     if (unlistedFiles && unlistedFiles.length) root.appendChild(renderUnlisted(unlistedFiles));
 
     return root;
+  }
+
+  // ---------- Comparar con otro archivo ----------
+  function renderCompareEntry() {
+    if (state.compareLoading) {
+      return el("span", { class: "compare-loading" }, ["Comparando…"]);
+    }
+    if (state.compare) {
+      return el("button", { class: "btn btn-ghost", onclick: () => { state.compare = null; render(); } }, ["✕ Salir de la comparación"]);
+    }
+    return el("button", { class: "btn btn-ghost", onclick: onCompareClick }, ["⇄ Comparar con otro archivo"]);
+  }
+
+  function onCompareClick() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".mbz,.zip";
+    input.style.display = "none";
+    input.addEventListener("change", () => {
+      if (input.files[0]) handleCompareFile(input.files[0]);
+      input.remove();
+    });
+    document.body.appendChild(input);
+    input.click();
+  }
+
+  async function handleCompareFile(file) {
+    const mySession = state.parsed; // si cambias de curso principal a medio comparar, descartamos en silencio
+    state.compareLoading = true;
+    render();
+    try {
+      const buf = await file.arrayBuffer();
+      if (state.parsed !== mySession) return;
+      const bytes = new Uint8Array(buf);
+      const fileMap = await unpackInWorker(bytes);
+      if (state.parsed !== mySession) return;
+      const result = MBZParser.interpretFileMap(fileMap);
+      precomputeDisplayText(result.course);
+      if (state.parsed !== mySession) return;
+      const diff = MBZCompare.compareCourses(state.parsed.course, result.course);
+      state.compare = { course: result.course, diff };
+      state.compareLoading = false;
+      render();
+    } catch (e) {
+      state.compareLoading = false;
+      if (state.parsed !== mySession) return;
+      console.error(e);
+      alert("No se ha podido comparar el archivo: " + e.message);
+      render();
+    }
+  }
+
+  function diffLabel(status) {
+    return { added: "Añadida", removed: "Eliminada", modified: "Modificada", added_section: "Sección nueva", removed_section: "Sección eliminada" }[status] || "";
+  }
+
+  function renderCompareView() {
+    const { diff, course: courseB } = state.compare;
+    const wrap = el("div", { class: "compare-wrap" });
+    wrap.appendChild(el("p", { class: "compare-subtitle" }, ["Comparando con: ", el("strong", {}, [courseB.name])]));
+    wrap.appendChild(el("ul", { class: "manifest-stats" }, [
+      el("li", { class: "tabular diff-badge diff-added" }, [`+${diff.summary.added} añadida(s)`]),
+      el("li", { class: "tabular diff-badge diff-removed" }, [`−${diff.summary.removed} eliminada(s)`]),
+      el("li", { class: "tabular diff-badge diff-modified" }, [`~${diff.summary.modified} modificada(s)`]),
+      el("li", { class: "tabular" }, [`${diff.summary.unchanged} sin cambios`]),
+    ]));
+
+    for (const sec of diff.sections) {
+      const box = el("div", { class: "section" });
+      const headChildren = [el("h3", { class: "section-title" }, [sec.title])];
+      if (sec.sectionStatus !== "unchanged") {
+        headChildren.push(el("span", { class: "diff-badge diff-" + sec.sectionStatus }, [diffLabel(sec.sectionStatus + "_section")]));
+      }
+      box.appendChild(el("div", { class: "section-header" }, headChildren));
+
+      const list = el("div", { class: "activity-list" });
+      for (const row of sec.rows) {
+        const act = row.act;
+        const rowChildren = [
+          el("span", { "aria-hidden": "true" }, [act.icon]),
+          el("span", { class: "activity-title" }, [act.title]),
+          el("span", { class: "stamp" }, [act.typeLabel]),
+        ];
+        if (row.status !== "unchanged") rowChildren.push(el("span", { class: "diff-badge diff-" + row.status }, [diffLabel(row.status)]));
+        list.appendChild(el("div", { class: "activity diff-row" + (row.status === "unchanged" ? " diff-row-unchanged" : "") }, [
+          el("div", { class: "activity-head" }, rowChildren),
+        ]));
+      }
+      box.appendChild(list);
+      wrap.appendChild(box);
+    }
+    return wrap;
   }
 
   function renderExportBar() {
@@ -3235,6 +3685,22 @@ ${body}
       const n = act.wikiPages ? act.wikiPages.length : 0;
       return n ? `${n} página(s): ` + act.wikiPages.slice(0, 6).map(p => p.title).join(" · ") : "Sin páginas extraíbles en este wiki";
     }
+    if (act.modulename === "lesson") {
+      const n = act.lessonPages ? act.lessonPages.length : 0;
+      return n ? `${n} página(s): ` + act.lessonPages.slice(0, 6).map(p => p.title).join(" · ") : "Sin páginas extraíbles en esta lección";
+    }
+    if (act.modulename === "workshop") {
+      const n = act.workshop && act.workshop.examples ? act.workshop.examples.length : 0;
+      return n ? `${n} entrega(s) de ejemplo` : "Instrucciones del taller (ver contenido)";
+    }
+    if (act.modulename === "data") {
+      const n = act.dataFields ? act.dataFields.length : 0;
+      return n ? `${n} campo(s): ` + act.dataFields.slice(0, 6).map(f => f.name).join(" · ") : "Sin campos extraíbles";
+    }
+    if (act.modulename === "chat") {
+      const n = act.chatMessages ? act.chatMessages.length : 0;
+      return n ? `${n} mensaje(s) de chat` : "Sin mensajes extraíbles en este chat";
+    }
     if (act.content) return MBZHtml.htmlToText(act.content);
     if (act.intro) return MBZHtml.htmlToText(act.intro);
     if (act.chapters && act.chapters.length) return act.chapters.map(c => c.title).join(" · ");
@@ -3251,6 +3717,10 @@ ${body}
     else if (act.modulename === "glossary") parts.push(MBZHtml.glossaryToPlainText(act.entries));
     else if (act.modulename === "choice") parts.push("Opciones:\n" + MBZHtml.choiceToPlainText(act.options));
     else if (act.modulename === "wiki") parts.push(MBZHtml.wikiToPlainText(act.wikiPages));
+    else if (act.modulename === "lesson") parts.push(MBZHtml.lessonToPlainText(act.lessonPages));
+    else if (act.modulename === "workshop") parts.push(MBZHtml.workshopToPlainText(act.workshop));
+    else if (act.modulename === "data") parts.push(MBZHtml.dataFieldsToPlainText(act.dataFields));
+    else if (act.modulename === "chat") parts.push(MBZHtml.chatToPlainText(act.chatMessages));
     else if (act.chapters && act.chapters.length) {
       for (const ch of act.chapters) { parts.push("· " + (ch.title || "Capítulo")); const t = MBZHtml.htmlToText(ch.contentRaw); if (t) parts.push(t); }
     } else if (act.content) { const t = MBZHtml.htmlToText(act.content); if (t) parts.push(t); }

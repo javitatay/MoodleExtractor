@@ -2840,18 +2840,42 @@ ${body}
 `;
   }
 
+  // Extensiones de archivos originales adjuntos agrupadas por categoría, para
+  // el filtro de tipo de contenido del panel de exportación. Lo que no
+  // encaja en ninguna lista cae en "other".
+  const TYPE_FILTER_IMAGE_EXT = new Set(["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "tiff", "tif", "ico", "heic"]);
+  const TYPE_FILTER_DOC_EXT = new Set(["doc", "docx", "odt", "xls", "xlsx", "ods", "ppt", "pptx", "odp", "csv", "rtf", "txt"]);
+  /**
+   * Clasifica un archivo original adjunto por extensión en una de las
+   * categorías del filtro de tipo de contenido: "pdf" | "image" | "doc" | "other".
+   * @param {string} filename
+   * @returns {"pdf"|"image"|"doc"|"other"}
+   */
+  function categorizeFileType(filename) {
+    const m = /\.([a-z0-9]+)$/i.exec(filename || "");
+    const ext = m ? m[1].toLowerCase() : "";
+    if (ext === "pdf") return "pdf";
+    if (TYPE_FILTER_IMAGE_EXT.has(ext)) return "image";
+    if (TYPE_FILTER_DOC_EXT.has(ext)) return "doc";
+    return "other";
+  }
+
   /**
    * @param {object} course        árbol devuelto por MBZParser.parseMbz(...).course
    * @param {Map}    fileMap       mapa ruta→bytes devuelto por parseMbz
    * @param {object} selection     { sections: { [sectionid]: boolean }, activities: { [moduleid]: boolean } }
-   * @param {object} options       { textFormat: "pdf"|"txt", includeOriginalFiles: bool, includeIndex: bool }
+   * @param {object} options       { textFormat: "pdf"|"txt", includeIndex: bool, singleCoursePdf: bool,
+   *   typeFilter: { pdf: bool, doc: bool, image: bool, other: bool, links: bool } } — el texto convertido
+   *   cuenta como "pdf" o "doc" según textFormat; los archivos originales se reparten por extensión
+   *   (categorizeFileType); "links" son los accesos directos .url de las actividades tipo URL.
    * @param {(info)=>void} [onProgress]
    * @param {object[]} [unlistedFiles] archivos de files.xml no ligados a ninguna actividad,
    *   que el profesor haya decidido incluir igualmente (van a una carpeta aparte)
    * @returns {Uint8Array} el ZIP final, listo para descargar
    */
   async function buildExportZip(course, fileMap, selection, options, onProgress, unlistedFiles) {
-    const opts = Object.assign({ textFormat: "pdf", includeOriginalFiles: true, includeIndex: true, singleCoursePdf: false }, options || {});
+    const opts = Object.assign({ textFormat: "pdf", includeIndex: true, singleCoursePdf: false }, options || {});
+    const tf = Object.assign({ pdf: true, doc: true, image: true, other: true, links: true }, opts.typeFilter || {});
     const report = (n, total) => { if (onProgress) onProgress({ stage: "empaquetando", n, total }); };
     // Cede el hilo cada pocas actividades para que la pestaña no se congele
     // del todo en cursos grandes (varios cientos de actividades = varios
@@ -2899,16 +2923,23 @@ ${body}
         const actManifest = { title: act.title, typeLabel: act.typeLabel, externalUrl: null, textFileRelPath: null, originalFileRelPaths: [] };
 
         if (act.modulename === "url" && act.externalUrl) {
-          zipEntries.push({ path: `${actFolder}/enlace.url`, data: new TextEncoder().encode(makeUrlShortcut(act.externalUrl)) });
-          indexLines.push(`${indexEntryPrefix} — [${act.externalUrl}](${act.externalUrl})`);
-          actManifest.externalUrl = act.externalUrl;
+          if (tf.links) {
+            zipEntries.push({ path: `${actFolder}/enlace.url`, data: new TextEncoder().encode(makeUrlShortcut(act.externalUrl)) });
+            actManifest.externalUrl = act.externalUrl;
+            indexLines.push(`${indexEntryPrefix} — [${act.externalUrl}](${act.externalUrl})`);
+          } else {
+            indexLines.push(indexEntryPrefix);
+          }
         } else {
           indexLines.push(indexEntryPrefix);
         }
 
         const richModuleNames = ["quiz", "forum", "glossary", "choice", "wiki", "lesson", "workshop", "data", "chat"];
         const hasTextContent = !!(MBZHtml.htmlToText(act.intro) || act.content || (act.chapters && act.chapters.length) || richModuleNames.includes(act.modulename) || !act.supported);
-        if (hasTextContent && act.modulename !== "url") {
+        // El texto convertido cuenta como "pdf" o "doc" a efectos del filtro de
+        // tipo de contenido, según el formato de salida elegido arriba.
+        const textFilterCategory = opts.textFormat === "pdf" ? "pdf" : "doc";
+        if (hasTextContent && act.modulename !== "url" && tf[textFilterCategory]) {
           if (opts.textFormat === "pdf") {
             const pdfBytes = MBZPdf.createTextPdf(act.title, activityTextBlocks(act));
             const rel = `${actFolder}/${slugName(act.title)}.pdf`;
@@ -2922,9 +2953,10 @@ ${body}
           }
         }
 
-        if (opts.includeOriginalFiles && act.files && act.files.length) {
+        if (act.files && act.files.length) {
           for (const f of act.files) {
             if (!f.existsInArchive) continue;
+            if (!tf[categorizeFileType(f.filename)]) continue;
             const data = fileMap.get(f.physicalPath);
             if (data) {
               const rel = `${actFolder}/${f.filename}`;
@@ -2944,12 +2976,11 @@ ${body}
     }
 
     const unlistedManifest = [];
-    if (unlistedFiles && unlistedFiles.length) {
+    const filteredUnlisted = (unlistedFiles || []).filter(f => f.existsInArchive && tf[categorizeFileType(f.filename)] && fileMap.get(f.physicalPath));
+    if (filteredUnlisted.length) {
       indexLines.push("## Otros archivos del curso", "", "Archivos presentes en el backup pero no asociados a ninguna actividad de las secciones anteriores (por ejemplo, adjuntos del banco de preguntas):", "");
-      for (const f of unlistedFiles) {
-        if (!f.existsInArchive) continue;
+      for (const f of filteredUnlisted) {
         const data = fileMap.get(f.physicalPath);
-        if (!data) continue;
         const rel = `Otros archivos del curso/${f.filename}`;
         zipEntries.push({ path: rel, data });
         indexLines.push(`- ${f.filename}`);
@@ -2964,7 +2995,9 @@ ${body}
       zipEntries.unshift({ path: "Indice.html", data: new TextEncoder().encode(htmlIndex) });
     }
 
-    if (opts.singleCoursePdf) {
+    // El PDF único de todo el curso es, por definición, un PDF: si la
+    // categoría "pdf" está desmarcada en el filtro, no tiene sentido generarlo.
+    if (opts.singleCoursePdf && tf.pdf) {
       const wholePdf = buildCourseWidePdf(course, selection);
       zipEntries.unshift({ path: `${slugName(course.name || "Curso")} — curso completo.pdf`, data: wholePdf });
     }
@@ -3204,7 +3237,7 @@ ${body}
     parsed: null,
     selection: { sections: {}, activities: {} }, // false = excluido; ausente = incluido
     includeUnlisted: false,
-    exportOpts: { textFormat: "pdf", includeOriginalFiles: true, includeIndex: true, singleCoursePdf: false },
+    exportOpts: { textFormat: "pdf", includeIndex: true, singleCoursePdf: false, typeFilter: { pdf: true, doc: true, image: true, other: true, links: true } },
     compare: null, compareLoading: false,
   };
   // Se incrementa en cada carga/reinicio; una carga en curso comprueba que
@@ -3583,6 +3616,36 @@ ${body}
     return wrap;
   }
 
+  // Categorías del filtro de tipo de contenido, con su etiqueta para el
+  // panel de exportación. El texto convertido de páginas/etiquetas cuenta
+  // como "pdf" o "doc" según el formato elegido arriba (ver categorizeFileType
+  // y textFilterCategory en MBZExporter.buildExportZip).
+  const TYPE_FILTER_OPTIONS = [
+    { key: "pdf", label: "📄 PDF", title: "Texto convertido a PDF (si el formato de arriba es PDF) + archivos .pdf adjuntos + PDF único del curso" },
+    { key: "doc", label: "📑 Documentos", title: "Texto convertido a TXT (si el formato de arriba es TXT) + adjuntos tipo doc, xls, ppt, odt, csv, rtf, txt" },
+    { key: "image", label: "🖼️ Imágenes", title: "Adjuntos tipo jpg, png, gif, webp, svg…" },
+    { key: "other", label: "📦 Otros archivos", title: "El resto de adjuntos (zip, audio, vídeo, SCORM…)" },
+    { key: "links", label: "🔗 Enlaces", title: "Accesos directos .url de las actividades tipo URL" },
+  ];
+
+  function renderTypeFilter() {
+    const tf = state.exportOpts.typeFilter;
+    return el("div", { class: "field-group", role: "group", "aria-label": "Filtrar por tipo de contenido" }, [
+      el("span", { class: "field-label" }, ["Incluir en la descarga:"]),
+      ...TYPE_FILTER_OPTIONS.map(opt => el("label", { class: "checkbox", title: opt.title }, [
+        el("input", {
+          type: "checkbox", checked: tf[opt.key] ? "checked" : null,
+          onchange: (e) => { tf[opt.key] = e.target.checked; },
+        }),
+        ` ${opt.label}`,
+      ])),
+      el("span", { class: "select-actions" }, [
+        el("button", { class: "btn-link", onclick: () => { TYPE_FILTER_OPTIONS.forEach(o => tf[o.key] = true); render(); } }, ["Todos"]),
+        el("button", { class: "btn-link", onclick: () => { TYPE_FILTER_OPTIONS.forEach(o => tf[o.key] = false); render(); } }, ["Ninguno"]),
+      ]),
+    ]);
+  }
+
   function renderExportBar() {
     const selCount = countSelected();
     const totalCount = totalActivities();
@@ -3600,13 +3663,10 @@ ${body}
         ]),
       ]),
       el("label", { class: "checkbox" }, [
-        el("input", { type: "checkbox", checked: state.exportOpts.includeOriginalFiles ? "checked" : null, onchange: (e) => { state.exportOpts.includeOriginalFiles = e.target.checked; } }),
-        " Incluir archivos originales adjuntos",
-      ]),
-      el("label", { class: "checkbox" }, [
         el("input", { type: "checkbox", checked: state.exportOpts.singleCoursePdf ? "checked" : null, onchange: (e) => { state.exportOpts.singleCoursePdf = e.target.checked; } }),
         " Generar también un PDF único de todo el curso",
       ]),
+      renderTypeFilter(),
       el("div", { class: "select-actions" }, [
         el("button", { class: "btn-link", onclick: () => { state.selection = { sections: {}, activities: {} }; render(); } }, ["Seleccionar todo"]),
         el("button", {

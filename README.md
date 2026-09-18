@@ -43,6 +43,7 @@ Es la herramienta pensada para ese "toma, esto es lo que dio el compañero el a�
 - 📂 **Árbol navegable** del curso completo: secciones → actividades, con icono y tipo de cada una (página, etiqueta, archivo, carpeta, URL, libro, foro, tarea, cuestionario...).
 - 👁️ **Vista previa en el propio navegador** del texto de cualquier página, etiqueta o libro — y de imágenes y PDF adjuntos, sin necesidad de descargar nada primero.
 - ✅ **Selección por casillas** a nivel de sección o de actividad individual, con "Seleccionar todo" / "Deseleccionar todo".
+- 🧰 **Filtro por tipo de contenido**: además de elegir qué secciones/actividades incluir, puedes decidir qué *tipo* de archivo quieres en la descarga — PDF, Documentos, Imágenes, Otros archivos y Enlaces se marcan y desmarcan por separado, así que "descárgame solo los PDF de todo el curso" o "solo los enlaces" es una descarga de un clic, sin tener que tocar el árbol de secciones.
 - 📄 **Conversión automática a PDF** (o `.txt` si lo prefieres) del texto de páginas, etiquetas y libros — legible directamente, sin depender de Moodle.
 - 📎 **Archivos originales incluidos tal cual** (PDF, imágenes, documentos...) organizados por sección y actividad.
 - 🔗 **Enlaces URL** exportados como acceso directo `.url`, y listados con su dirección en el índice.
@@ -67,7 +68,8 @@ Es la herramienta pensada para ese "toma, esto es lo que dio el compañero el a�
 2. Arrastra el archivo `.mbz` sobre la zona indicada, o haz clic para seleccionarlo.
 3. Explora el árbol de secciones y actividades; usa "Ver contenido" para leer el texto de cualquiera sin descargar nada.
 4. Marca lo que te interesa (por sección o actividad suelta) y elige si el texto se exporta como PDF o TXT.
-5. Pulsa **Descargar selección** — se genera un `.zip` con todo organizado por carpetas, listo para abrir.
+5. En "Incluir en la descarga" desmarca los tipos de contenido que no quieras — por ejemplo, deja solo "PDF" marcado si únicamente te interesan los PDF, o solo "Enlaces" si solo quieres los `.url`. Por defecto están todos marcados.
+6. Pulsa **Descargar selección** — se genera un `.zip` con todo organizado por carpetas, listo para abrir.
 
 No hace falta instalar nada ni tener Moodle a mano. Funciona igual publicado en GitHub Pages que abriendo `index.html` directamente desde el disco.
 
